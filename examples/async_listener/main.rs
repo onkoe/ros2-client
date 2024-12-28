@@ -1,5 +1,5 @@
 use futures::StreamExt;
-use ros2_client::{ros2::policy, *};
+use ros2_client::prelude::{dds::*, *};
 
 pub fn main() {
     // Here is a fixed path, so this example must be started from
@@ -14,19 +14,19 @@ pub fn main() {
         )
         .unwrap();
 
-    let reliable_qos = ros2::QosPolicyBuilder::new()
-        .history(policy::History::KeepLast { depth: 10 })
-        .reliability(policy::Reliability::Reliable {
-            max_blocking_time: ros2::Duration::from_millis(100),
+    let reliable_qos = QosPolicyBuilder::new()
+        .history(History::KeepLast { depth: 10 })
+        .reliability(Reliability::Reliable {
+            max_blocking_time: rustdds::Duration::from_millis(100),
         })
-        .durability(policy::Durability::TransientLocal)
+        .durability(Durability::TransientLocal)
         .build();
 
     let chatter_topic = node
         .create_topic(
             &Name::new("/", "topic").unwrap(),
             MessageTypeName::new("std_msgs", "String"),
-            &ros2_client::DEFAULT_SUBSCRIPTION_QOS,
+            &DEFAULT_SUBSCRIPTION_QOS,
         )
         .unwrap();
     let chatter_subscription = node
@@ -45,7 +45,7 @@ pub fn main() {
     // Since we enabled rosout, let's log something
     rosout!(
         node,
-        ros2::LogLevel::Info,
+        LogLevel::Info,
         "wow. very listening. such topics. much subscribe."
     );
 

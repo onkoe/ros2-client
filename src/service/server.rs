@@ -1,16 +1,27 @@
 use std::io;
 
 use futures::{pin_mut, stream::FusedStream, StreamExt};
-#[allow(unused_imports)]
-use log::{debug, error, info, warn};
+
+use log::debug;
 use mio::{Evented, Poll, PollOpt, Ready, Token};
 use rustdds::{
     dds::{CreateResult, ReadError, ReadResult, WriteResult},
+    no_key, read_error_internal,
     rpc::*,
-    *,
+    QosPolicies, RepresentationIdentifier, Timestamp, Topic, TopicDescription, WriteOptionsBuilder,
 };
 
-use crate::{message_info::MessageInfo, node::Node, service::*};
+use crate::{
+    message::Message,
+    node::Node,
+    prelude::MessageInfo,
+    service::request_id::RmwRequestId,
+    service::wrappers::{
+        DataWriterR, RequestWrapper, ResponseWrapper, ServiceDeserializerAdapter,
+        ServiceSerializerAdapter, SimpleDataReaderR,
+    },
+    service::{Service, ServiceMapping},
+};
 
 // --------------------------------------------
 // --------------------------------------------
@@ -151,7 +162,7 @@ where
         &self,
         rmw_req_id: RmwRequestId,
         response: S::Response,
-    ) -> dds::WriteResult<(), ()> {
+    ) -> rustdds::dds::WriteResult<(), ()> {
         let resp_wrapper = ResponseWrapper::<S::Response>::new(
             self.service_mapping,
             rmw_req_id,

@@ -1,13 +1,12 @@
 use std::{convert::TryFrom, time::Duration};
 
 use futures::{stream::StreamExt, FutureExt as StdFutureExt};
-#[allow(unused_imports)]
-use log::{debug, error, info, warn};
+
+use log::{debug, info};
 use ros2_client::{
-    action, action::GoalEndStatus, ActionTypeName, Context, Name, Node, NodeName, NodeOptions,
-    ServiceMapping,
+    action::{self, GoalEndStatus},
+    prelude::{dds::*, *},
 };
-use rustdds::{policy, QosPolicies, QosPolicyBuilder};
 use smol::future::FutureExt;
 
 // Test / demo program of ROS2 Action, server side.
@@ -30,7 +29,7 @@ use smol::future::FutureExt;
 // just as well use e.g.
 // struct FibonacciActionGoal{ goal: i32 }
 // or any other tuple/struct that contains only an i32.
-type FibonacciAction = action::Action<i32, Vec<i32>, Vec<i32>>;
+type FibonacciAction = Action<i32, Vec<i32>, Vec<i32>>;
 
 fn main() {
     pretty_env_logger::init();
@@ -51,20 +50,20 @@ fn main() {
 
     let service_qos: QosPolicies = {
         QosPolicyBuilder::new()
-            .reliability(policy::Reliability::Reliable {
+            .reliability(Reliability::Reliable {
                 max_blocking_time: rustdds::Duration::from_millis(100),
             })
-            .history(policy::History::KeepLast { depth: 1 })
+            .history(History::KeepLast { depth: 1 })
             .build()
     };
 
     let publisher_qos: QosPolicies = {
         QosPolicyBuilder::new()
-            .reliability(policy::Reliability::Reliable {
+            .reliability(Reliability::Reliable {
                 max_blocking_time: rustdds::Duration::from_millis(100),
             })
-            .history(policy::History::KeepLast { depth: 1 })
-            .durability(policy::Durability::TransientLocal)
+            .history(History::KeepLast { depth: 1 })
+            .durability(Durability::TransientLocal)
             .build()
     };
 

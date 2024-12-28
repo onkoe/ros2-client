@@ -4,7 +4,10 @@
 
 use serde::{Deserialize, Serialize};
 
-use crate::{parameters, service::AService, Message};
+use crate::{
+    message::Message,
+    service::{parameters, AService},
+};
 
 pub type ListParametersService = AService<ListParametersRequest, ListParametersResponse>;
 

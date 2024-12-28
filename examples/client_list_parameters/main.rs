@@ -1,13 +1,8 @@
 use std::{env, time::Duration};
 
 use futures::TryFutureExt;
-use ros2_client::{
-    rcl_interfaces::{ListParametersRequest, ListParametersResponse},
-    ros2::WriteError,
-    service::CallServiceError,
-    AService, Context, Name, Node, NodeName, NodeOptions, ServiceMapping, ServiceTypeName,
-};
-use rustdds::{policy, QosPolicies, QosPolicyBuilder};
+use ros2_client::prelude::{dds::*, *};
+
 use smol::future::FutureExt;
 
 fn main() {
@@ -81,10 +76,10 @@ fn main() {
 fn create_qos() -> QosPolicies {
     let service_qos: QosPolicies = {
         QosPolicyBuilder::new()
-            .reliability(policy::Reliability::Reliable {
+            .reliability(Reliability::Reliable {
                 max_blocking_time: rustdds::Duration::from_millis(100),
             })
-            .history(policy::History::KeepLast { depth: 1 })
+            .history(History::KeepLast { depth: 1 })
             .build()
     };
     service_qos

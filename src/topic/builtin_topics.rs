@@ -1,26 +1,27 @@
-use rustdds::{policy::*, *};
-
 pub mod ros_discovery {
-    use super::*;
+    use rustdds::{
+        policy::{Deadline, Durability, History, Lifespan, Ownership},
+        QosPolicies, QosPolicyBuilder,
+    };
 
     lazy_static! {
         pub static ref QOS_PUB: QosPolicies = QosPolicyBuilder::new()
             .durability(Durability::TransientLocal)
-            .deadline(Deadline(Duration::INFINITE))
+            .deadline(Deadline(rustdds::Duration::INFINITE))
             .ownership(Ownership::Shared)
-            .reliable(Duration::ZERO)
+            .reliable(rustdds::Duration::ZERO)
             .history(History::KeepLast { depth: 1 })
             .lifespan(Lifespan {
-                duration: Duration::INFINITE
+                duration: rustdds::Duration::INFINITE
             })
             .build();
         pub static ref QOS_SUB: QosPolicies = QosPolicyBuilder::new()
             .durability(Durability::Volatile)
             .ownership(Ownership::Shared)
-            .reliable(Duration::ZERO)
+            .reliable(rustdds::Duration::ZERO)
             .history(History::KeepLast { depth: 1 })
             .lifespan(Lifespan {
-                duration: Duration::INFINITE
+                duration: rustdds::Duration::INFINITE
             })
             .build();
     }
@@ -31,12 +32,15 @@ pub mod ros_discovery {
 }
 
 pub mod parameter_events {
-    use super::*;
+    use rustdds::{
+        policy::{Durability, History},
+        QosPolicies, QosPolicyBuilder,
+    };
 
     lazy_static! {
         pub static ref QOS: QosPolicies = QosPolicyBuilder::new()
             .durability(Durability::TransientLocal)
-            .reliable(Duration::ZERO)
+            .reliable(rustdds::Duration::ZERO)
             .history(History::KeepLast { depth: 1 })
             .build();
     }
@@ -47,17 +51,20 @@ pub mod parameter_events {
 }
 
 pub mod rosout {
-    use super::*;
+    use rustdds::{
+        policy::{Deadline, Durability, History, Lifespan, Ownership},
+        QosPolicies, QosPolicyBuilder,
+    };
 
     lazy_static! {
         pub static ref QOS: QosPolicies = QosPolicyBuilder::new()
             .durability(Durability::TransientLocal)
-            .deadline(Deadline(Duration::INFINITE))
+            .deadline(Deadline(rustdds::Duration::INFINITE))
             .ownership(Ownership::Shared)
-            .reliable(Duration::ZERO)
+            .reliable(rustdds::Duration::ZERO)
             .history(History::KeepLast { depth: 1 })
             .lifespan(Lifespan {
-                duration: Duration::from_secs(10)
+                duration: rustdds::Duration::from_secs(10)
             })
             .build();
     }

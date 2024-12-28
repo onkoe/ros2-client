@@ -27,7 +27,7 @@
 use log::{error, warn};
 use serde::{Deserialize, Serialize};
 
-use crate::{message::Message, ros_time::ROSTime};
+use crate::{message::Message, prelude::ROSTime};
 
 /// Over-the wire representation of a timestamp.
 ///

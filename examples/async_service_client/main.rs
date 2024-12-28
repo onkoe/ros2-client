@@ -1,12 +1,9 @@
 use std::time::Duration;
 
 use futures::{FutureExt as StdFutureExt, StreamExt, TryFutureExt};
-#[allow(unused_imports)]
-use log::{debug, error, info, warn};
-use ros2_client::{
-    service::CallServiceError, AService, Context, Message, Name, Node, NodeName, NodeOptions,
-    ServiceMapping, ServiceTypeName,
-};
+
+use log::debug;
+use ros2_client::prelude::*;
 use rustdds::{dds::WriteError, policy, QosPolicies, QosPolicyBuilder};
 use serde::{Deserialize, Serialize};
 use smol::future::FutureExt;

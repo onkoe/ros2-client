@@ -1,7 +1,7 @@
 use std::{convert::TryInto, time::Duration};
 
 use chrono::{DateTime, Utc};
-use ros2_client::*;
+use ros2_client::{interfaces::builtin_interfaces::Time, prelude::*};
 
 pub fn main() {
     log4rs::init_file("log4rs.yaml", Default::default()).unwrap();
@@ -48,7 +48,7 @@ pub fn main() {
     // ros2 param describe --spin-time=5 /time_broadcaster my_param
 
     let clock_publisher = node
-        .create_publisher::<builtin_interfaces::Time>(
+        .create_publisher::<Time>(
             &node
                 .create_topic(
                     &Name::new("/", "clock").unwrap(),

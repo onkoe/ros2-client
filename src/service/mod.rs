@@ -1,20 +1,16 @@
 //! Implementation of ROS 2 [Services](https://docs.ros.org/en/rolling/Tutorials/Beginner-CLI-Tools/Understanding-ROS2-Services/Understanding-ROS2-Services.html)
 use std::marker::PhantomData;
 
-#[allow(unused_imports)]
-use log::{debug, error, info, warn};
-
 use crate::message::Message;
 
 pub mod client;
+pub mod parameters;
 pub mod request_id;
 pub mod server;
-pub(super) mod wrappers;
+pub mod wrappers;
 
-pub use client::*;
-pub use request_id::*;
-pub use server::*;
-use wrappers::*;
+pub use client::Client;
+pub use server::Server;
 
 // --------------------------------------------
 // --------------------------------------------

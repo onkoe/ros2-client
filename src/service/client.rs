@@ -1,16 +1,27 @@
 use std::{io, sync::atomic};
 
 use futures::{join, pin_mut, StreamExt};
-#[allow(unused_imports)]
-use log::{debug, error, info, warn};
+
 use mio::{Evented, Poll, PollOpt, Ready, Token};
 use rustdds::{
     dds::{CreateResult, ReadError, ReadResult, WriteError, WriteResult},
-    rpc::*,
-    *,
+    no_key, read_error_internal,
+    rpc::SampleIdentity,
+    QosPolicies, RTPSEntity as _, RepresentationIdentifier, SequenceNumber, Timestamp, Topic,
+    TopicDescription, WriteOptionsBuilder, GUID,
 };
 
-use crate::{message_info::MessageInfo, node::Node, service::*};
+use crate::{
+    message::Message,
+    node::Node,
+    prelude::MessageInfo,
+    service::request_id::RmwRequestId,
+    service::wrappers::{
+        DataWriterR, RequestWrapper, ResponseWrapper, ServiceDeserializerAdapter,
+        ServiceSerializerAdapter, SimpleDataReaderR,
+    },
+    service::{request_id, Service, ServiceMapping},
+};
 
 /// Client end of a ROS2 Service
 pub struct Client<S>
@@ -47,7 +58,7 @@ where
       ::<ResponseWrapper<S::Response>, ServiceDeserializerAdapter<ResponseWrapper<S::Response>>>(
         response_topic, qos_response)?;
 
-        debug!(
+        log::debug!(
             "Created new Client: request={} response={}",
             request_topic.name(),
             response_topic.name()
@@ -155,7 +166,7 @@ where
             ServiceMapping::Enhanced => sent_rmw_req_id,
             ServiceMapping::Basic | ServiceMapping::Cyclone => gen_rmw_req_id,
         };
-        debug!(
+        log::debug!(
             "Sent Request {:?} to {:?}",
             req_id,
             self.request_sender.topic().name()
@@ -184,9 +195,10 @@ where
                     if req_id == request_id {
                         return Ok(response);
                     } else {
-                        debug!(
+                        log::debug!(
                             "Received response for someone else. expected={:?}  received={:?}",
-                            request_id, req_id
+                            request_id,
+                            req_id
                         );
                         continue; //
                     }

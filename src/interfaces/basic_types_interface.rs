@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-use crate::Message;
+use crate::message::Message;
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct BasicTypesRequest {

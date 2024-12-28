@@ -8,12 +8,15 @@ use futures::{
 use mio::{Evented, Poll, PollOpt, Ready, Token};
 use rustdds::{
     dds::{ReadError, ReadResult, WriteResult},
+    no_key, read_error_internal,
     serialization::CdrDeserializeSeedDecoder,
-    *,
+    RTPSEntity as _, Timestamp, WriteOptions,
 };
 use serde::{de::DeserializeOwned, Serialize};
 
-use super::{gid::Gid, message_info::MessageInfo, node::Node};
+use crate::{interfaces::gid::Gid, prelude::MessageInfo};
+
+use super::Node;
 
 /// A ROS2 Publisher
 ///
@@ -81,7 +84,7 @@ impl<M: Serialize> Publisher<M> {
         &self,
         message: M,
         wo: WriteOptions,
-    ) -> dds::WriteResult<rustdds::rpc::SampleIdentity, M> {
+    ) -> rustdds::dds::WriteResult<rustdds::rpc::SampleIdentity, M> {
         self.datawriter.async_write_with_options(message, wo).await
     }
 }

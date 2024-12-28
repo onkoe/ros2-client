@@ -50,79 +50,54 @@
 #[macro_use]
 extern crate lazy_static;
 
-/// Some builtin datatypes needed for ROS2 communication
-/// Some convenience topic infos for ROS2 communication
-pub mod builtin_topics;
-
-#[doc(hidden)]
-pub use action::action_msgs; // action mechanism implementation
-
-/// Some builtin interfaces for ROS2 communication
-pub mod builtin_interfaces;
-
-#[doc(hidden)]
-pub mod context;
-
-#[doc(hidden)] // needed for actions implementation
-pub mod unique_identifier_msgs;
-
-#[doc(hidden)]
-#[deprecated] // we should remove the rest of these
-pub mod interfaces;
-
-/// ROS 2 Action machinery
 pub mod action;
-pub mod entities_info;
-mod gid;
+pub mod interfaces;
 pub mod log;
 pub mod message;
-pub mod message_info;
-pub mod names;
-pub mod parameters;
-#[doc(hidden)]
-pub mod pubsub;
-pub mod rcl_interfaces;
-pub mod ros_time;
+pub mod node;
 pub mod service;
+pub mod time;
+pub mod topic;
 
-pub mod steady_time;
-mod wide_string;
+/// Common types in this crate.
+pub mod prelude {
+    pub use crate::action::{Action, ActionTypes};
+    pub use crate::message::{message_info::MessageInfo, Message};
 
-#[doc(hidden)]
-pub(crate) mod node;
+    pub use crate::interfaces::{
+        names::{ActionTypeName, MessageTypeName, Name, NodeName, ServiceTypeName},
+        rcl_interfaces::*,
+        wide_string::WString,
+    };
 
-// Re-exports from crate root to simplify usage
-#[doc(inline)]
-pub use action::{Action, ActionTypes};
-#[doc(inline)]
-pub use context::*;
-#[doc(inline)]
-pub use message::Message;
-#[doc(inline)]
-pub use message_info::MessageInfo;
-#[doc(inline)]
-pub use names::{ActionTypeName, MessageTypeName, Name, NodeName, ServiceTypeName};
-#[doc(inline)]
-pub use node::*;
-#[doc(inline)]
-pub use parameters::{Parameter, ParameterValue};
-#[doc(inline)]
-pub use pubsub::*;
-#[doc(inline)]
-pub use ros_time::{ROSTime, SystemTime};
-#[doc(inline)]
-pub use service::{AService, Client, Server, Service, ServiceMapping};
-#[doc(inline)]
-pub use wide_string::WString;
+    pub use crate::service::{
+        client::CallServiceError,
+        client::Client,
+        parameters::{Parameter, ParameterValue},
+        server::Server,
+        AService, Service, ServiceMapping,
+    };
 
-/// Module for stuff we do not want to export from top level;
-pub mod ros2 {
-    pub use rustdds::{qos::policy, Duration, QosPolicies, QosPolicyBuilder, Timestamp};
-    //TODO: re-export RustDDS error types until ros2-client defines its own
-    pub use rustdds::dds::{CreateError, ReadError, WaitError, WriteError};
+    pub use crate::node::{
+        context::{Context, ContextOptions, DEFAULT_PUBLISHER_QOS, DEFAULT_SUBSCRIPTION_QOS},
+        pubsub::{Publisher, Subscription},
+        Node, NodeCreateError, NodeEvent, NodeOptions, Spinner,
+    };
 
-    pub use crate::log::LogLevel;
-    // TODO: What to do about SecurityError (exists based on feature "security")
-    pub use crate::names::Name; // import Name as ros2::Name if there is clash
-                                // otherwise
+    // time
+    pub use crate::time::{ros_time::ROSTime, ros_time::SystemTime};
+
+    // logging
+    pub use crate::log::{Log, LogLevel};
+    pub use crate::rosout;
+
+    /// Stuff related to the [`rustdds`] crate. In a separate prelude since
+    /// many users won't need these types.
+    pub mod dds {
+        pub use rustdds::{
+            dds::WriteError,
+            policy::{Deadline, Durability, History, Lifespan, Liveliness, Reliability},
+            Duration as DdsDuration, QosPolicies, QosPolicyBuilder, Timestamp,
+        };
+    }
 }

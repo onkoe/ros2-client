@@ -6,25 +6,24 @@ use std::{
 #[cfg(feature = "security")]
 use std::path::{Path, PathBuf};
 
-#[allow(unused_imports)]
-use log::{debug, error, info, trace, warn};
-//use mio::Evented;
 use rustdds::{
     dds::CreateResult,
-    no_key::{DeserializerAdapter, SerializerAdapter},
+    no_key::{self, DeserializerAdapter, SerializerAdapter},
     policy::*,
-    *,
+    DomainParticipant, DomainParticipantBuilder, QosPolicies, QosPolicyBuilder, RTPSEntity as _,
+    Topic, TopicKind,
 };
 use serde::Serialize;
 
 use crate::{
-    builtin_topics,
-    entities_info::{NodeEntitiesInfo, ParticipantEntitiesInfo},
-    gid::Gid,
-    names::*,
-    node::{Node, NodeOptions},
-    pubsub::{Publisher, Subscription},
-    NodeCreateError,
+    interfaces::gid::Gid,
+    node::{
+        entities_info::{NodeEntitiesInfo, ParticipantEntitiesInfo},
+        pubsub::{Publisher, Subscription},
+        Node, NodeOptions,
+    },
+    prelude::{MessageTypeName, NodeCreateError, NodeName},
+    topic::builtin_topics,
 };
 
 lazy_static! {
@@ -32,15 +31,15 @@ lazy_static! {
 ///
 /// Note: If you want Reliable communication, both publisher and Subscriber
 /// must specify QoS Reliability = Reliable.
-  pub static ref DEFAULT_SUBSCRIPTION_QOS: QosPolicies = QosPolicyBuilder::new()
+    pub static ref DEFAULT_SUBSCRIPTION_QOS: QosPolicies = QosPolicyBuilder::new()
     .durability(Durability::Volatile) // default per table in DDS Spec v1.4 Section 2.2.3 Supported QoS
-    .deadline(Deadline(Duration::INFINITE)) // default per table in DDS Spec v1.4 Section 2.2.3 Supported QoS
+    .deadline(Deadline(rustdds::Duration::INFINITE)) // default per table in DDS Spec v1.4 Section 2.2.3 Supported QoS
     .ownership(Ownership::Shared) // default per table in DDS Spec v1.4 Section 2.2.3 Supported QoS
     .reliability(Reliability::BestEffort) // default for DataReaders and Topics
     .history(History::KeepLast { depth: 1 }) // default per table in DDS Spec v1.4 Section 2.2.3 Supported QoS
     .lifespan(Lifespan {
-      // default per table in DDS Spec v1.4 Section 2.2.3 Supported QoS
-      duration: Duration::INFINITE
+        // default per table in DDS Spec v1.4 Section 2.2.3 Supported QoS
+        duration: rustdds::Duration::INFINITE
     })
     .build();
 }
@@ -49,13 +48,13 @@ lazy_static! {
 /// Basic Reliable QoS for publishing.
   pub static ref DEFAULT_PUBLISHER_QOS: QosPolicies = QosPolicyBuilder::new()
     .durability(Durability::Volatile)
-    .deadline(Deadline(Duration::INFINITE))
+    .deadline(Deadline(rustdds::Duration::INFINITE))
     .ownership(Ownership::Shared)
-    .reliability(Reliability::Reliable{max_blocking_time: Duration::from_millis(100)})
+    .reliability(Reliability::Reliable{max_blocking_time: rustdds::Duration::from_millis(100)})
       // Reliability = Reliable is the default for DataWriters, different from above.
     .history(History::KeepLast { depth: 1 })
     .lifespan(Lifespan {
-      duration: Duration::INFINITE
+      duration: rustdds::Duration::INFINITE
     })
     .build();
 }
@@ -145,7 +144,7 @@ impl Context {
         {
             if let Some(sc) = opt.security_config {
                 dpb = dpb.builtin_security(
-                    DomainParticipantSecurityConfigFiles::with_ros_default_names(
+                    rustdds::DomainParticipantSecurityConfigFiles::with_ros_default_names(
                         sc.security_config_dir,
                         sc.private_key_password,
                     ),
@@ -226,7 +225,7 @@ impl Context {
         type_name: MessageTypeName,
         qos: &QosPolicies,
     ) -> CreateResult<Topic> {
-        info!("Creating topic, DDS name: {}", topic_dds_name);
+        log::info!("Creating topic, DDS name: {}", topic_dds_name);
         let topic = self.domain_participant().create_topic(
             topic_dds_name,
             type_name.dds_msg_type(),
@@ -234,7 +233,7 @@ impl Context {
             TopicKind::NoKey,
         )?;
         // ROS2 does not use WithKey topics, so always NoKey
-        info!("Created topic");
+        log::info!("Created topic");
         Ok(topic)
     }
 
@@ -242,7 +241,7 @@ impl Context {
         &self,
         topic: &Topic,
         qos: Option<QosPolicies>,
-    ) -> dds::CreateResult<Publisher<M>>
+    ) -> rustdds::dds::CreateResult<Publisher<M>>
     where
         M: Serialize,
     {
@@ -257,7 +256,7 @@ impl Context {
         &self,
         topic: &Topic,
         qos: Option<QosPolicies>,
-    ) -> dds::CreateResult<Subscription<M>>
+    ) -> rustdds::dds::CreateResult<Subscription<M>>
     where
         M: 'static,
     {
@@ -271,7 +270,7 @@ impl Context {
         &self,
         topic: &Topic,
         qos: Option<QosPolicies>,
-    ) -> dds::CreateResult<no_key::DataWriter<M, SA>>
+    ) -> rustdds::dds::CreateResult<no_key::DataWriter<M, SA>>
     where
         SA: SerializerAdapter<M>,
     {
@@ -283,7 +282,7 @@ impl Context {
         &self,
         topic: &Topic,
         qos: Option<QosPolicies>,
-    ) -> dds::CreateResult<no_key::SimpleDataReader<M, DA>>
+    ) -> rustdds::dds::CreateResult<no_key::SimpleDataReader<M, DA>>
     where
         M: 'static,
         DA: 'static + DeserializerAdapter<M>,
@@ -407,10 +406,10 @@ impl ContextInner {
 
     fn broadcast_node_infos(&self) {
         let pei = self.participant_entities_info();
-        debug!("ROS discovery publish: {pei:?}");
+        log::debug!("ROS discovery publish: {pei:?}");
         self.node_writer
             .publish(pei)
-            .unwrap_or_else(|e| error!("Failed to write into node_writer {:?}", e));
+            .unwrap_or_else(|e| log::error!("Failed to write into node_writer {:?}", e));
     }
 } // impl ContextInner
 
@@ -425,15 +424,23 @@ impl Drop for ContextInner {
 // -------------------------------------------------------------------------------------
 // -------------------------------------------------------------------------------------
 
-#[test]
-fn test_node_create() {
-    use crate::ParameterValue;
+#[cfg(test)]
+mod tests {
+    use crate::{
+        node::NodeOptions,
+        prelude::{NodeName, ParameterValue},
+    };
 
-    let context = Context::new().unwrap();
-    let _node = context
-        .new_node(
-            NodeName::new("/rustdds", "test_node").unwrap(),
-            NodeOptions::new().declare_parameter("foo", ParameterValue::Boolean(true)),
-        )
-        .is_ok();
+    use super::Context;
+
+    #[test]
+    fn test_node_create() {
+        let context = Context::new().unwrap();
+        let _node = context
+            .new_node(
+                NodeName::new("/rustdds", "test_node").unwrap(),
+                NodeOptions::new().declare_parameter("foo", ParameterValue::Boolean(true)),
+            )
+            .is_ok();
+    }
 }

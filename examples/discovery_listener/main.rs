@@ -1,5 +1,5 @@
 use futures::StreamExt;
-use ros2_client::{Context, NodeName, NodeOptions};
+use ros2_client::prelude::*;
 
 pub fn main() {
     let context = Context::new().unwrap();

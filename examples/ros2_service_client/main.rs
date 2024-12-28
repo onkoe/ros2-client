@@ -1,10 +1,7 @@
 use std::time::{Duration, Instant};
 
 use mio::{Events, Poll, PollOpt, Ready, Token};
-use ros2_client::{
-    AService, Context, Message, Name, Node, NodeName, NodeOptions, ServiceMapping, ServiceTypeName,
-};
-use rustdds::{policy, QosPolicies, QosPolicyBuilder};
+use ros2_client::prelude::{dds::*, *};
 use serde::{Deserialize, Serialize};
 
 const RESPONSE_TOKEN: Token = Token(7); // Just an arbitrary value
@@ -101,10 +98,10 @@ fn main() {
 fn create_qos() -> QosPolicies {
     let service_qos: QosPolicies = {
         QosPolicyBuilder::new()
-            .reliability(policy::Reliability::Reliable {
+            .reliability(Reliability::Reliable {
                 max_blocking_time: rustdds::Duration::from_millis(100),
             })
-            .history(policy::History::KeepLast { depth: 1 })
+            .history(History::KeepLast { depth: 1 })
             .build()
     };
     service_qos

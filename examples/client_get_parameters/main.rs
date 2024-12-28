@@ -1,13 +1,8 @@
 use std::{env, time::Duration};
 
 use futures::TryFutureExt;
-use ros2_client::{
-    rcl_interfaces::{GetParametersRequest, GetParametersResponse},
-    ros2::WriteError,
-    service::CallServiceError,
-    AService, Context, Name, Node, NodeName, NodeOptions, ParameterValue, ServiceMapping,
-    ServiceTypeName,
-};
+use ros2_client::prelude::{dds::*, *};
+
 use rustdds::{policy, QosPolicies, QosPolicyBuilder};
 use smol::future::FutureExt;
 

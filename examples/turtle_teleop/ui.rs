@@ -7,8 +7,7 @@ use std::{
     },
 };
 
-#[allow(unused_imports)]
-use log::{debug, error, info, warn};
+use log::{debug, error, info};
 use mio::{Events, Poll, PollOpt, Ready, Token};
 use mio_extras::channel as mio_channel;
 use termion::{

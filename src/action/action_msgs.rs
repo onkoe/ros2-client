@@ -1,15 +1,19 @@
 use serde::{Deserialize, Serialize};
 use serde_repr::{Deserialize_repr, Serialize_repr};
 
-use crate::message::Message;
+use crate::{
+    interfaces::{builtin_interfaces::Time, unique_identifier_msgs::UUID},
+    message::Message,
+};
 
-pub type GoalId = crate::unique_identifier_msgs::UUID;
+pub type GoalId = UUID;
 
 /// From [GoalInfo](https://docs.ros2.org/foxy/api/action_msgs/msg/GoalInfo.html)
 #[derive(Clone, Serialize, Deserialize, Debug)]
 pub struct GoalInfo {
     pub goal_id: GoalId,
-    pub stamp: crate::builtin_interfaces::Time, // Time when the goal was accepted
+    /// Time when the goal was accepted.
+    pub stamp: Time,
 }
 impl Message for GoalInfo {}
 

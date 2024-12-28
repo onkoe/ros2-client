@@ -1,12 +1,12 @@
 use std::time::Duration;
 
 use futures::{pin_mut, FutureExt as StdFutureExt, StreamExt};
-#[allow(unused_imports)]
-use log::{debug, error, info, warn};
+
+use log::debug;
 use ros2_client::{
-    action, action_msgs, ActionTypeName, Context, Name, NodeName, NodeOptions, ServiceMapping,
+    action::{action_msgs, ActionClientQosPolicies},
+    prelude::{dds::*, *},
 };
-use rustdds::{dds::WriteError, policy, QosPolicies, QosPolicyBuilder};
 use smol::future::FutureExt;
 
 // Test / demo program of ROS2 Action, client side.
@@ -41,7 +41,7 @@ use smol::future::FutureExt;
 // just as well use e.g.
 // struct FibonacciActionGoal{ goal: i32 }
 // or any other tuple/struct that contains only an i32.
-type FibonacciAction = action::Action<i32, Vec<i32>, Vec<i32>>;
+type FibonacciAction = Action<i32, Vec<i32>, Vec<i32>>;
 
 fn main() {
     pretty_env_logger::init();
@@ -70,7 +70,7 @@ fn main() {
 
     let service_qos = create_qos();
 
-    let fibonacci_action_qos = action::ActionClientQosPolicies {
+    let fibonacci_action_qos = ActionClientQosPolicies {
         goal_service: service_qos.clone(),
         result_service: service_qos.clone(),
         cancel_service: service_qos.clone(),
@@ -201,10 +201,10 @@ fn main() {
 fn create_qos() -> QosPolicies {
     let service_qos: QosPolicies = {
         QosPolicyBuilder::new()
-            .reliability(policy::Reliability::Reliable {
+            .reliability(Reliability::Reliable {
                 max_blocking_time: rustdds::Duration::from_millis(100),
             })
-            .history(policy::History::KeepLast { depth: 1 })
+            .history(History::KeepLast { depth: 1 })
             .build()
     };
     service_qos

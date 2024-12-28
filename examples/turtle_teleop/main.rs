@@ -1,10 +1,11 @@
 use std::time::Duration;
 
-#[allow(unused_imports)]
-use ::log::{debug, error, info, warn};
 use mio::{Events, Poll, PollOpt, Ready, Token};
 use mio_extras::channel as mio_channel;
-use ros2_client::{action, ros2, *};
+use ros2_client::{
+    action::ActionClientQosPolicies,
+    prelude::{dds::*, *},
+};
 use rustdds::*;
 use serde::{Deserialize, Serialize};
 use termion::raw::*;
@@ -130,16 +131,16 @@ fn ros2_loop(
     pose_sender: mio_channel::SyncSender<Pose>,
     message_sender: mio_channel::SyncSender<String>,
 ) {
-    info!("ros2_loop");
+    log::info!("ros2_loop");
 
     let topic_qos: QosPolicies = {
         QosPolicyBuilder::new()
             .durability(policy::Durability::Volatile)
             .liveliness(policy::Liveliness::Automatic {
-                lease_duration: ros2::Duration::INFINITE,
+                lease_duration: DdsDuration::INFINITE,
             })
             .reliability(policy::Reliability::Reliable {
-                max_blocking_time: ros2::Duration::from_millis(100),
+                max_blocking_time: DdsDuration::from_millis(100),
             })
             .history(policy::History::KeepLast { depth: 1 })
             .build()
@@ -218,7 +219,7 @@ fn ros2_loop(
     let service_qos: QosPolicies = {
         QosPolicyBuilder::new()
             .reliability(policy::Reliability::Reliable {
-                max_blocking_time: ros2::Duration::from_millis(100),
+                max_blocking_time: DdsDuration::from_millis(100),
             })
             .history(policy::History::KeepLast { depth: 1 })
             .build()
@@ -346,7 +347,7 @@ fn ros2_loop(
         Action<RotateAbsoluteGoal, RotateAbsoluteResult, RotateAbsoluteFeedback>;
 
     //TODO: There should be an easier way to do this.
-    let rotate_action_qos = action::ActionClientQosPolicies {
+    let rotate_action_qos = ActionClientQosPolicies {
         goal_service: service_qos.clone(),
         result_service: service_qos.clone(),
         cancel_service: service_qos.clone(),
@@ -465,12 +466,8 @@ fn ros2_loop(
 
     // event loop
 
-    info!("Entering event_loop");
-    rosout!(
-        ros_node,
-        ros2::LogLevel::Info,
-        "initialized, entering event loop"
-    );
+    log::info!("Entering event_loop");
+    rosout!(ros_node, LogLevel::Info, "initialized, entering event loop");
     'event_loop: loop {
         let mut events = Events::with_capacity(100);
         poll.poll(&mut events, None).unwrap();
@@ -481,7 +478,7 @@ fn ros2_loop(
                     while let Ok(command) = command_receiver.try_recv() {
                         match command {
                             RosCommand::StopEventLoop => {
-                                info!("Stopping main event loop");
+                                log::info!("Stopping main event loop");
                                 break 'event_loop;
                             }
                             RosCommand::TurtleCmdVel { turtle_id, twist } => {
@@ -491,10 +488,10 @@ fn ros2_loop(
                                     _ => panic!("WTF?"),
                                 } {
                                     Ok(_) => {
-                                        info!("Wrote to ROS2 {:?}", twist);
+                                        log::info!("Wrote to ROS2 {:?}", twist);
                                     }
                                     Err(e) => {
-                                        error!("Failed to write to turtle writer. {:?}", e);
+                                        log::error!("Failed to write to turtle writer. {:?}", e);
                                         return;
                                     }
                                 }
@@ -504,23 +501,27 @@ fn ros2_loop(
                                     Ok(id) => {
                                         rosout!(
                                             ros_node,
-                                            ros2::LogLevel::Info,
+                                            LogLevel::Info,
                                             "Requested turtlesim reset"
                                         );
-                                        info!("Reset request sent {:?}", id);
+                                        log::info!("Reset request sent {:?}", id);
                                     }
                                     Err(e) => {
-                                        error!("Failed to send request: {:?}", e);
+                                        log::error!("Failed to send request: {:?}", e);
                                     }
                                 }
                             }
                             RosCommand::SetPen(pen_request) => {
                                 match set_pen_client.send_request(pen_request.clone()) {
                                     Ok(id) => {
-                                        info!("set_pen request sent {:?} {:?}", id, pen_request);
+                                        log::info!(
+                                            "set_pen request sent {:?} {:?}",
+                                            id,
+                                            pen_request
+                                        );
                                     }
                                     Err(e) => {
-                                        error!("Failed to send request: {:?}", e);
+                                        log::error!("Failed to send request: {:?}", e);
                                     }
                                 }
                             }
@@ -533,20 +534,20 @@ fn ros2_loop(
                                     name,
                                 }) {
                                     Ok(id) => {
-                                        info!("spawn request sent {:?} ", id);
+                                        log::info!("spawn request sent {:?} ", id);
                                     }
                                     Err(e) => {
-                                        error!("Failed to send request: {:?}", e);
+                                        log::error!("Failed to send request: {:?}", e);
                                     }
                                 }
                             }
                             RosCommand::Kill(name) => {
                                 match kill_client.send_request(KillRequest { name }) {
                                     Ok(id) => {
-                                        info!("kill request sent {:?} ", id);
+                                        log::info!("kill request sent {:?} ", id);
                                     }
                                     Err(e) => {
-                                        error!("Failed to send request: {:?}", e);
+                                        log::error!("Failed to send request: {:?}", e);
                                     }
                                 }
                             }
@@ -556,16 +557,17 @@ fn ros2_loop(
                                     .send_goal(RotateAbsoluteGoal { theta: heading })
                                 {
                                     Err(e) => {
-                                        error!("Failed to send RotateAbsoluteGoal: {:?}", e);
+                                        log::error!("Failed to send RotateAbsoluteGoal: {:?}", e);
                                     }
                                     Ok((req_id, ref goal_id)) => {
-                                        info!(
+                                        log::info!(
                                             "RotateAbsoluteGoal sent. req_id={:?}  goal_id={:?}",
-                                            req_id, goal_id
+                                            req_id,
+                                            goal_id
                                         );
                                         rosout!(
                                             ros_node,
-                                            ros2::LogLevel::Info,
+                                            LogLevel::Info,
                                             "RotateAbsoluteGoal sent. req_id={:?}  goal_id={:?}",
                                             req_id,
                                             goal_id
@@ -577,15 +579,18 @@ fn ros2_loop(
                             }
 
                             RosCommand::RotateAbsolute_Cancel => match rotate_goal_id {
-                                None => info!("No goal to cancel!"),
+                                None => log::info!("No goal to cancel!"),
                                 Some(ref goal_id) => {
                                     match rotate_action_client.cancel_goal(*goal_id) {
                                         Err(e) => {
-                                            error!("Failed to cancel RotateAbsoluteGoal: {:?}", e);
+                                            log::error!(
+                                                "Failed to cancel RotateAbsoluteGoal: {:?}",
+                                                e
+                                            );
                                         }
                                         Ok(req_id) => {
                                             rotate_cancel_req_id = Some(req_id);
-                                            info!("RotateAbsolute cancel request sent.");
+                                            log::info!("RotateAbsolute cancel request sent.");
                                         }
                                     }
                                 }
@@ -608,7 +613,7 @@ fn ros2_loop(
                         message_sender
                             .send(format!("Turtle reset acknowledged: {:?}", id))
                             .unwrap();
-                        info!("Turtle reset acknowledged: {:?}", id);
+                        log::info!("Turtle reset acknowledged: {:?}", id);
                     }
                 }
                 SET_PEN_CLIENT_TOKEN => {
@@ -616,7 +621,7 @@ fn ros2_loop(
                         message_sender
                             .send(format!("set_pen acknowledged: {:?}", id))
                             .unwrap();
-                        info!("set_pen acknowledged: {:?}", id);
+                        log::info!("set_pen acknowledged: {:?}", id);
                     }
                 }
                 KILL_CLIENT_TOKEN => {
@@ -624,12 +629,12 @@ fn ros2_loop(
                         message_sender
                             .send(format!("Turtle kill acknowledged: {:?}", id))
                             .unwrap();
-                        info!("Turtle kill acknowledged: {:?}", id);
+                        log::info!("Turtle kill acknowledged: {:?}", id);
                     }
                 }
 
                 ROTATE_ABSOLUTE_GOAL_RESPONSE_TOKEN => {
-                    info!("ROTATE_ABSOLUTE_GOAL_RESPONSE triggered");
+                    log::info!("ROTATE_ABSOLUTE_GOAL_RESPONSE triggered");
                     match (rotate_goal_req_id, &rotate_goal_id) {
                         (Some(req_id), Some(goal_id)) => {
                             loop {
@@ -641,32 +646,37 @@ fn ros2_loop(
                                                 goal_resp
                                             ))
                                             .unwrap();
-                                        info!("RotateAbsolute goal acknowledged: {:?}", goal_resp);
+                                        log::info!(
+                                            "RotateAbsolute goal acknowledged: {:?}",
+                                            goal_resp
+                                        );
                                         match rotate_action_client.request_result(*goal_id) {
-                                            Err(e) => info!("Cannot request result: {:?}", e),
+                                            Err(e) => log::info!("Cannot request result: {:?}", e),
                                             Ok(result_req_id) => {
                                                 rotate_result_req_id = Some(result_req_id);
-                                                info!("Requested RotateAbsolute action result.")
+                                                log::info!(
+                                                    "Requested RotateAbsolute action result."
+                                                )
                                             }
                                         }
                                     }
                                     Ok(None) => {
                                         // no more data to read
-                                        info!("ROTATE_ABSOLUTE_GOAL_RESPONSE no more data");
+                                        log::info!("ROTATE_ABSOLUTE_GOAL_RESPONSE no more data");
                                         break;
                                     }
                                     Err(e) => {
-                                        error!("Error receiving RotateAbsoluteGoal: {e}")
+                                        log::error!("Error receiving RotateAbsoluteGoal: {e}")
                                     }
                                 } // match
                             } // loop
                         }
-                        (_, None) => info!("Goal response, but for what goal?"),
-                        (None, _) => info!("Goal response, but don't know goal request id!"),
+                        (_, None) => log::info!("Goal response, but for what goal?"),
+                        (None, _) => log::info!("Goal response, but don't know goal request id!"),
                     }
                 }
                 ROTATE_ABSOLUTE_RESULT_RESPONSE_TOKEN => match rotate_result_req_id {
-                    None => info!("Where is my result response id?"),
+                    None => log::info!("Where is my result response id?"),
                     Some(req_id) => {
                         while let Ok(Some(result_resp)) =
                             rotate_action_client.receive_result(req_id)
@@ -674,10 +684,10 @@ fn ros2_loop(
                             message_sender
                                 .send(format!("RotateAbsolute result: {:?}", result_resp))
                                 .unwrap();
-                            info!("RotateAbsolute result: {:?}", result_resp);
+                            log::info!("RotateAbsolute result: {:?}", result_resp);
                             rosout!(
                                 ros_node,
-                                ros2::LogLevel::Info,
+                                LogLevel::Info,
                                 "RotateAbsolute result: {:?}",
                                 result_resp
                             );
@@ -686,7 +696,7 @@ fn ros2_loop(
                     }
                 },
                 ROTATE_ABSOLUTE_CANCEL_RESPONSE_TOKEN => match rotate_cancel_req_id {
-                    None => info!("Where is my cancel response id?"),
+                    None => log::info!("Where is my cancel response id?"),
                     Some(req_id) => {
                         while let Ok(Some(cancel_resp)) =
                             rotate_action_client.receive_cancel_response(req_id)
@@ -694,7 +704,7 @@ fn ros2_loop(
                             message_sender
                                 .send(format!("RotateAbsolute cancel response: {:?}", cancel_resp))
                                 .unwrap();
-                            info!("RotateAbsolute cancel response: {:?}", cancel_resp);
+                            log::info!("RotateAbsolute cancel response: {:?}", cancel_resp);
                             rotate_cancel_req_id = None;
                         }
                     }
@@ -702,22 +712,22 @@ fn ros2_loop(
 
                 ROTATE_ABSOLUTE_STATUS_TOKEN => {
                     while let Ok(Some(status)) = rotate_action_client.receive_status() {
-                        info!("RotateAbsolute status = {:?}", status);
+                        log::info!("RotateAbsolute status = {:?}", status);
                     }
                 }
                 ROTATE_ABSOLUTE_FEEDBACK_TOKEN => match rotate_goal_id {
                     Some(ref rotate_goal_id) => loop {
                         match rotate_action_client.receive_feedback(*rotate_goal_id) {
-                            Ok(Some(f)) => info!("RotateAbsolute feedback = {:?}", f),
+                            Ok(Some(f)) => log::info!("RotateAbsolute feedback = {:?}", f),
                             Ok(None) => break,
-                            Err(e) => error!("Bad feedback: {:?}", e),
+                            Err(e) => log::error!("Bad feedback: {:?}", e),
                         }
                     },
-                    None => info!("Feedback, but no goal!"),
+                    None => log::info!("Feedback, but no goal!"),
                 },
 
                 _ => {
-                    error!("Unknown poll token {:?}", event.token())
+                    log::error!("Unknown poll token {:?}", event.token())
                 }
             } // match
         } // for

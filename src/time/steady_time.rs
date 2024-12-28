@@ -26,7 +26,7 @@ use std::{
 
 use chrono::{DateTime, Utc};
 
-use crate::ROSTime;
+use crate::prelude::ROSTime;
 
 /// Monotonic time in nanoseconds
 ///

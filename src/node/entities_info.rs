@@ -9,9 +9,14 @@ use log::error;
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    gid::Gid,
-    names::{NameError, NodeName},
+    interfaces::{gid::Gid, names::NameError},
+    prelude::NodeName,
 };
+
+// use crate::{
+//     gid::Gid,
+//     names::{NameError, NodeName},
+// };
 
 // Each time a Node adds/removes a Reader or Writer (Publisher / Subscrption in
 // ROS terms) is must publish a new ParticipantEntitiesInfo that describes its
@@ -129,7 +134,7 @@ impl From<NodeEntitiesInfo> for repr::NodeEntitiesInfo {
 pub(crate) mod repr {
     use serde::{Deserialize, Serialize};
 
-    use crate::gid::Gid;
+    use crate::interfaces::gid::Gid;
 
     #[derive(Clone, Serialize, Deserialize)]
     pub(crate) struct NodeEntitiesInfo {

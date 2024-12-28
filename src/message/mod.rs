@@ -3,6 +3,8 @@
 
 use serde::{de::DeserializeOwned, Serialize};
 
+pub mod message_info;
+
 /// Trait to ensure Messages can be (de)serialized
 pub trait Message: Serialize + DeserializeOwned {}
 

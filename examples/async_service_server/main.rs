@@ -1,13 +1,7 @@
 use futures::StreamExt;
-#[allow(unused_imports)]
-use log::{debug, error, info, warn};
-use ros2_client::{
-    AService, Context, Message, Name, Node, NodeName, NodeOptions, ServiceMapping, ServiceTypeName,
-};
-use rustdds::{
-    policy::{self, Deadline, Lifespan},
-    Duration, QosPolicies, QosPolicyBuilder,
-};
+
+use log::debug;
+use ros2_client::prelude::{dds::*, *};
 use serde::{Deserialize, Serialize};
 
 // This is an example / test program.
@@ -75,17 +69,17 @@ fn main() {
 fn create_qos() -> QosPolicies {
     let service_qos: QosPolicies = {
         QosPolicyBuilder::new()
-            .history(policy::History::KeepLast { depth: 10 })
-            .reliability(policy::Reliability::Reliable {
-                max_blocking_time: Duration::from_millis(100),
+            .history(History::KeepLast { depth: 10 })
+            .reliability(Reliability::Reliable {
+                max_blocking_time: DdsDuration::from_millis(100),
             })
-            .durability(policy::Durability::Volatile)
-            .deadline(Deadline(Duration::INFINITE))
+            .durability(Durability::Volatile)
+            .deadline(Deadline(DdsDuration::INFINITE))
             .lifespan(Lifespan {
-                duration: Duration::INFINITE,
+                duration: DdsDuration::INFINITE,
             })
-            .liveliness(policy::Liveliness::Automatic {
-                lease_duration: Duration::INFINITE,
+            .liveliness(Liveliness::Automatic {
+                lease_duration: DdsDuration::INFINITE,
             })
             .build()
     };

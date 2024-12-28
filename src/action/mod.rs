@@ -3,8 +3,6 @@ use std::{
     marker::PhantomData,
 };
 
-pub use action_msgs::{CancelGoalRequest, CancelGoalResponse, GoalId, GoalInfo, GoalStatusEnum};
-use builtin_interfaces::Time;
 use futures::{
     pin_mut,
     stream::{FusedStream, StreamExt},
@@ -12,17 +10,25 @@ use futures::{
 };
 use rustdds::{
     dds::{ReadError, ReadResult, WriteError, WriteResult},
-    *,
+    QosPolicies,
 };
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    builtin_interfaces,
+    interfaces::{
+        builtin_interfaces::{self, Time},
+        unique_identifier_msgs::UUID,
+    },
     message::Message,
-    names::Name,
-    service::{request_id::RmwRequestId, AService, CallServiceError, Client, Server},
-    unique_identifier_msgs, Publisher, Subscription,
+    prelude::{Name, Publisher, Subscription},
+    service::{
+        client::{CallServiceError, Client},
+        request_id::RmwRequestId,
+        server::Server,
+        AService,
+    },
 };
+pub use action_msgs::{CancelGoalRequest, CancelGoalResponse, GoalId, GoalInfo, GoalStatusEnum};
 
 pub mod action_msgs;
 
@@ -121,7 +127,7 @@ impl<G: Message> Message for SendGoalRequest<G> {}
 #[derive(Clone, Serialize, Deserialize, Debug)]
 pub struct SendGoalResponse {
     pub accepted: bool,
-    pub stamp: builtin_interfaces::Time,
+    pub stamp: Time,
 }
 impl Message for SendGoalResponse {}
 
@@ -210,7 +216,7 @@ where
     where
         <A as ActionTypes>::GoalType: 'static,
     {
-        let goal_id = unique_identifier_msgs::UUID::new_random();
+        let goal_id = UUID::new_random();
         self.my_goal_client
             .send_request(SendGoalRequest { goal_id, goal })
             .map(|req_id| (req_id, goal_id))
@@ -257,11 +263,10 @@ where
     where
         <A as ActionTypes>::GoalType: 'static,
     {
-        let goal_id = unique_identifier_msgs::UUID::new_random();
-        let send_goal_response = self
-            .my_goal_client
-            .async_call_service(SendGoalRequest { goal_id, goal })
-            .await?;
+        let goal_id = UUID::new_random();
+        let send_goal_response =
+            Client::async_call_service(&self.my_goal_client, SendGoalRequest { goal_id, goal })
+                .await?;
         Ok((goal_id, send_goal_response))
     }
 
@@ -1097,7 +1102,7 @@ where
         let goal_filter: Box<dyn FnMut(&(&GoalId, &AsyncGoal<A>)) -> bool> = match goal_info {
             GoalInfo {
                 goal_id: GoalId::ZERO,
-                stamp: builtin_interfaces::Time::ZERO,
+                stamp: Time::ZERO,
             } => Box::new(|(_, _)| true), // cancel all goals
 
             GoalInfo {
@@ -1107,7 +1112,7 @@ where
 
             GoalInfo {
                 goal_id,
-                stamp: builtin_interfaces::Time::ZERO,
+                stamp: Time::ZERO,
             } => Box::new(move |(g_id, _)| goal_id == **g_id),
 
             GoalInfo { goal_id, stamp } => Box::new(move |(g_id, ag)| {

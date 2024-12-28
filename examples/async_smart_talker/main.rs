@@ -1,5 +1,5 @@
 use async_io::Timer;
-use ros2_client::{ros2, ros2::policy, Context, MessageTypeName, Name, NodeName, NodeOptions};
+use ros2_client::prelude::{dds::*, *};
 
 // This test program is like "async_talker", but it also tracks the amount of subscribers.
 
@@ -20,12 +20,12 @@ fn main() {
         )
         .unwrap();
 
-    let reliable_qos = ros2::QosPolicyBuilder::new()
-        .history(policy::History::KeepLast { depth: 10 })
-        .reliability(policy::Reliability::Reliable {
-            max_blocking_time: ros2::Duration::from_millis(100),
+    let reliable_qos = QosPolicyBuilder::new()
+        .history(History::KeepLast { depth: 10 })
+        .reliability(Reliability::Reliable {
+            max_blocking_time: DdsDuration::from_millis(100),
         })
-        .durability(policy::Durability::TransientLocal)
+        .durability(Durability::TransientLocal)
         .build();
 
     let chatter_topic = node
