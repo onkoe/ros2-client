@@ -55,7 +55,7 @@ extern crate lazy_static;
 pub mod builtin_topics;
 
 #[doc(hidden)]
-pub mod action_msgs; // action mechanism implementation
+pub use action::action_msgs; // action mechanism implementation
 
 /// Some builtin interfaces for ROS2 communication
 pub mod builtin_interfaces;

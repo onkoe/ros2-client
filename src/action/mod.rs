@@ -10,8 +10,6 @@ use futures::{
     stream::{FusedStream, StreamExt},
     Future,
 };
-#[allow(unused_imports)]
-use log::{debug, error, info, warn};
 use rustdds::{
     dds::{ReadError, ReadResult, WriteError, WriteResult},
     *,
@@ -19,12 +17,14 @@ use rustdds::{
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    action_msgs, builtin_interfaces,
+    builtin_interfaces,
     message::Message,
     names::Name,
     service::{request_id::RmwRequestId, AService, CallServiceError, Client, Server},
     unique_identifier_msgs, Publisher, Subscription,
 };
+
+pub mod action_msgs;
 
 /// A trait to define an Action type
 pub trait ActionTypes {
@@ -236,9 +236,10 @@ where
                 }
                 Ok(Some((incoming_req_id, _resp))) => {
                     // got someone else's answer. Try again.
-                    info!(
+                    log::info!(
                         "Goal Response not for us: {:?} != {:?}",
-                        incoming_req_id, req_id
+                        incoming_req_id,
+                        req_id
                     );
                     continue;
                 }
@@ -386,9 +387,10 @@ where
                 }
                 Ok(Some((fb_msg, _msg_info))) => {
                     // feedback on some other goal
-                    debug!(
+                    log::debug!(
                         "Feedback on another goal {:?} != {:?}",
-                        fb_msg.goal_id, goal_id
+                        fb_msg.goal_id,
+                        goal_id
                     )
                 }
             }
@@ -413,7 +415,7 @@ where
                         if goal_id == expected_goal_id {
                             Some(Ok(feedback))
                         } else {
-                            debug!("Feedback for some other {:?}.", goal_id);
+                            log::debug!("Feedback for some other {:?}.", goal_id);
                             None
                         }
                     }
@@ -755,9 +757,10 @@ where
                     break (req_id, goal_request.goal_id);
                 }
                 Entry::Occupied(_) => {
-                    error!(
+                    log::error!(
                         "Received duplicate goal_id {:?} , req_id={:?}",
-                        goal_request.goal_id, req_id
+                        goal_request.goal_id,
+                        req_id
                     );
                     continue; // just discard this request
                 }
@@ -808,9 +811,10 @@ where
                     status: wrong_status,
                     ..
                 } => {
-                    error!(
+                    log::error!(
                         "Tried to accept goal {:?} but status was {:?}, expected Unknown.",
-                        handle.inner.goal_id, wrong_status
+                        handle.inner.goal_id,
+                        wrong_status
                     );
                     Err(GoalError::WrongGoalState)
                 }
@@ -850,9 +854,10 @@ where
                         status: wrong_status,
                         ..
                     } => {
-                        error!(
+                        log::error!(
                             "Tried to reject goal {:?} but status was {:?}, expected Unknown.",
-                            handle.inner.goal_id, wrong_status
+                            handle.inner.goal_id,
+                            wrong_status
                         );
                         Err(GoalError::WrongGoalState)
                     }
@@ -884,9 +889,10 @@ where
                     status: wrong_status,
                     ..
                 } => {
-                    error!(
+                    log::error!(
                         "Tried to execute goal {:?} but status was {:?}, expected Accepted.",
-                        handle.inner.goal_id, wrong_status
+                        handle.inner.goal_id,
+                        wrong_status
                     );
                     Err(GoalError::WrongGoalState)
                 }
@@ -915,7 +921,7 @@ where
                     status: wrong_status,
                     ..
                 } => {
-                    error!(
+                    log::error!(
             "Tried publish feedback on goal {:?} but status was {:?}, expected Executing.",
             handle.inner.goal_id, wrong_status
           );
@@ -967,9 +973,10 @@ where
                         break req_id;
                     } else {
                         self.result_requests.insert(goal_id, req_id);
-                        debug!(
+                        log::debug!(
                             "Got result request for goal_id={:?} req_id={:?}",
-                            goal_id, req_id
+                            goal_id,
+                            req_id
                         );
                         // and loop to wait for the next
                     }
@@ -1004,9 +1011,10 @@ where
                                 result,
                             },
                         )?;
-                        debug!(
+                        log::debug!(
                             "Send result for goal_id={:?}  req_id={:?}",
-                            handle.inner.goal_id, req_id
+                            handle.inner.goal_id,
+                            req_id
                         );
                         Ok(())
                     }
@@ -1014,9 +1022,10 @@ where
                         status: wrong_status,
                         ..
                     } => {
-                        error!(
+                        log::error!(
                             "Tried to finish goal {:?} but status was {:?}.",
-                            handle.inner.goal_id, wrong_status
+                            handle.inner.goal_id,
+                            wrong_status
                         );
                         Err(GoalError::WrongGoalState)
                     }
@@ -1063,7 +1072,7 @@ where
                     status: wrong_status,
                     ..
                 } => {
-                    error!(
+                    log::error!(
             "Tried to abort goal {:?} but status was {:?}, expected Accepted or Executing. ",
             handle.goal_id, wrong_status
           );
@@ -1196,7 +1205,7 @@ where
                 )
                 .collect(),
         };
-        debug!(
+        log::debug!(
             "Reporting statuses for {:?}",
             goal_status_array
                 .status_list
@@ -1205,6 +1214,6 @@ where
         );
         self.actionserver
             .send_goal_statuses(goal_status_array)
-            .unwrap_or_else(|e| error!("AsyncActionServer::publish_statuses: {:?}", e));
+            .unwrap_or_else(|e| log::error!("AsyncActionServer::publish_statuses: {:?}", e));
     }
 }
