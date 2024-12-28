@@ -1,7 +1,7 @@
 use std::fmt;
 
-use serde::{Deserialize, Serialize};
 use rustdds::*;
+use serde::{Deserialize, Serialize};
 
 #[cfg(not(feature = "pre-iron-gid"))]
 pub const GID_LENGTH: usize = 16;
@@ -19,31 +19,31 @@ pub const GID_LENGTH: usize = 24;
 ///
 /// Use Cargo feature `pre-iron-gid` if you want the old version.           
 #[derive(
-  Copy, Clone, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize, CdrEncodingSize,
+    Copy, Clone, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize, CdrEncodingSize,
 )]
 pub struct Gid([u8; GID_LENGTH]);
 
 impl fmt::Debug for Gid {
-  fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-    for b in self.0.iter() {
-      write!(f, "{:02x}", b)?;
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        for b in self.0.iter() {
+            write!(f, "{:02x}", b)?;
+        }
+        Ok(())
     }
-    Ok(())
-  }
 }
 
 impl From<GUID> for Gid {
-  fn from(guid: GUID) -> Self {
-    Gid(std::array::from_fn(|i| {
-      *guid.to_bytes().as_ref().get(i).unwrap_or(&0)
-    }))
-  }
+    fn from(guid: GUID) -> Self {
+        Gid(std::array::from_fn(|i| {
+            *guid.to_bytes().as_ref().get(i).unwrap_or(&0)
+        }))
+    }
 }
 
 impl From<Gid> for GUID {
-  fn from(gid: Gid) -> GUID {
-    GUID::from_bytes(std::array::from_fn(|i| gid.0[i]))
-  }
+    fn from(gid: Gid) -> GUID {
+        GUID::from_bytes(std::array::from_fn(|i| gid.0[i]))
+    }
 }
 
 impl Key for Gid {}

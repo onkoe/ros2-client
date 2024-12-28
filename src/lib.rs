@@ -93,13 +93,15 @@ pub(crate) mod node;
 
 // Re-exports from crate root to simplify usage
 #[doc(inline)]
+pub use action::{Action, ActionTypes};
+#[doc(inline)]
 pub use context::*;
 #[doc(inline)]
 pub use message::Message;
 #[doc(inline)]
-pub use names::{ActionTypeName, MessageTypeName, Name, NodeName, ServiceTypeName};
-#[doc(inline)]
 pub use message_info::MessageInfo;
+#[doc(inline)]
+pub use names::{ActionTypeName, MessageTypeName, Name, NodeName, ServiceTypeName};
 #[doc(inline)]
 pub use node::*;
 #[doc(inline)]
@@ -107,22 +109,20 @@ pub use parameters::{Parameter, ParameterValue};
 #[doc(inline)]
 pub use pubsub::*;
 #[doc(inline)]
+pub use ros_time::{ROSTime, SystemTime};
+#[doc(inline)]
 pub use service::{AService, Client, Server, Service, ServiceMapping};
 #[doc(inline)]
-pub use action::{Action, ActionTypes};
-#[doc(inline)]
 pub use wide_string::WString;
-#[doc(inline)]
-pub use ros_time::{ROSTime, SystemTime};
 
 /// Module for stuff we do not want to export from top level;
 pub mod ros2 {
-  pub use rustdds::{qos::policy, Duration, QosPolicies, QosPolicyBuilder, Timestamp};
-  //TODO: re-export RustDDS error types until ros2-client defines its own
-  pub use rustdds::dds::{CreateError, ReadError, WaitError, WriteError};
+    pub use rustdds::{qos::policy, Duration, QosPolicies, QosPolicyBuilder, Timestamp};
+    //TODO: re-export RustDDS error types until ros2-client defines its own
+    pub use rustdds::dds::{CreateError, ReadError, WaitError, WriteError};
 
-  pub use crate::log::LogLevel;
-  // TODO: What to do about SecurityError (exists based on feature "security")
-  pub use crate::names::Name; // import Name as ros2::Name if there is clash
-                              // otherwise
+    pub use crate::log::LogLevel;
+    // TODO: What to do about SecurityError (exists based on feature "security")
+    pub use crate::names::Name; // import Name as ros2::Name if there is clash
+                                // otherwise
 }

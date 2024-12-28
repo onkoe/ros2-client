@@ -11,10 +11,10 @@ pub mod request_id;
 pub mod server;
 pub(super) mod wrappers;
 
-pub use request_id::*;
-use wrappers::*;
-pub use server::*;
 pub use client::*;
+pub use request_id::*;
+pub use server::*;
+use wrappers::*;
 
 // --------------------------------------------
 // --------------------------------------------
@@ -23,10 +23,10 @@ pub use client::*;
 /// Additionally, it ensures that Response and Request are Messages
 /// (Serializable), and we have a means to name the types.
 pub trait Service {
-  type Request: Message;
-  type Response: Message;
-  fn request_type_name(&self) -> &str;
-  fn response_type_name(&self) -> &str;
+    type Request: Message;
+    type Response: Message;
+    fn request_type_name(&self) -> &str;
+    fn response_type_name(&self) -> &str;
 }
 
 // --------------------------------------------
@@ -37,45 +37,45 @@ pub trait Service {
 /// request and response.
 pub struct AService<Q, S>
 where
-  Q: Message,
-  S: Message,
+    Q: Message,
+    S: Message,
 {
-  q: PhantomData<Q>,
-  s: PhantomData<S>,
-  req_type_name: String,
-  resp_type_name: String,
+    q: PhantomData<Q>,
+    s: PhantomData<S>,
+    req_type_name: String,
+    resp_type_name: String,
 }
 
 impl<Q, S> AService<Q, S>
 where
-  Q: Message,
-  S: Message,
+    Q: Message,
+    S: Message,
 {
-  pub fn new(req_type_name: String, resp_type_name: String) -> Self {
-    Self {
-      req_type_name,
-      resp_type_name,
-      q: PhantomData,
-      s: PhantomData,
+    pub fn new(req_type_name: String, resp_type_name: String) -> Self {
+        Self {
+            req_type_name,
+            resp_type_name,
+            q: PhantomData,
+            s: PhantomData,
+        }
     }
-  }
 }
 
 impl<Q, S> Service for AService<Q, S>
 where
-  Q: Message,
-  S: Message,
+    Q: Message,
+    S: Message,
 {
-  type Request = Q;
-  type Response = S;
+    type Request = Q;
+    type Response = S;
 
-  fn request_type_name(&self) -> &str {
-    &self.req_type_name
-  }
+    fn request_type_name(&self) -> &str {
+        &self.req_type_name
+    }
 
-  fn response_type_name(&self) -> &str {
-    &self.resp_type_name
-  }
+    fn response_type_name(&self) -> &str {
+        &self.resp_type_name
+    }
 }
 
 // --------------------------------------------
@@ -97,22 +97,22 @@ where
 /// CycloneDDS.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum ServiceMapping {
-  /// "Basic" service mapping from RPC over DDS specification.
-  /// * RTI Connext with `RMW_CONNEXT_REQUEST_REPLY_MAPPING=basic`, but this is
-  ///   not tested, so may not work.
-  Basic,
+    /// "Basic" service mapping from RPC over DDS specification.
+    /// * RTI Connext with `RMW_CONNEXT_REQUEST_REPLY_MAPPING=basic`, but this is
+    ///   not tested, so may not work.
+    Basic,
 
-  /// "Enhanced" service mapping from RPC over DDS specification.
-  /// * ROS2 Foxy with eProsima DDS,
-  /// * ROS2 Galactic with RTI Connext (rmw_connextdds, not rmw_connext_cpp) -
-  ///   set environment variable `RMW_CONNEXT_REQUEST_REPLY_MAPPING=extended`
-  ///   before running ROS2 executable.
-  Enhanced,
+    /// "Enhanced" service mapping from RPC over DDS specification.
+    /// * ROS2 Foxy with eProsima DDS,
+    /// * ROS2 Galactic with RTI Connext (rmw_connextdds, not rmw_connext_cpp) -
+    ///   set environment variable `RMW_CONNEXT_REQUEST_REPLY_MAPPING=extended`
+    ///   before running ROS2 executable.
+    Enhanced,
 
-  /// CycloneDDS-specific service mapping.
-  /// Specification for this mapping is unknown, technical details are
-  /// reverse-engineered from ROS2 sources.
-  /// * ROS2 Galactic with CycloneDDS - Seems to work on the same host only, not
-  ///   over actual network.
-  Cyclone,
+    /// CycloneDDS-specific service mapping.
+    /// Specification for this mapping is unknown, technical details are
+    /// reverse-engineered from ROS2 sources.
+    /// * ROS2 Galactic with CycloneDDS - Seems to work on the same host only, not
+    ///   over actual network.
+    Cyclone,
 }
