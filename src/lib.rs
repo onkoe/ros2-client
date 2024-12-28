@@ -60,6 +60,7 @@ pub mod topic;
 pub mod prelude {
     pub use crate::action::{Action, ActionTypes};
     pub use crate::message::{message_info::MessageInfo, Message};
+    pub use crate::topic::Topic;
 
     pub use crate::interfaces::{
         names::{ActionTypeName, MessageTypeName, Name, NodeName, ServiceTypeName},
