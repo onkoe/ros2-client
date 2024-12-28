@@ -19,11 +19,58 @@ use wrappers::*;
 // --------------------------------------------
 // --------------------------------------------
 
-/// Service trait pairs the Request and Response types together.
-/// Additionally, it ensures that Response and Request are Messages
-/// (Serializable), and we have a means to name the types.
+/// A Service is a ROS 2 Interface where a requester sends a [`Self::Request`]
+/// and a responder makes a computation, returning a [`Self::Response`].
+///
+/// These are used to represent short-term operations across Nodes in ROS 2.
+/// For additional information about ROS 2 services, see
+/// [its documentation](https://docs.ros.org/en/rolling/Concepts/Basic/About-Interfaces.html#services).
+///
+/// Within this crate, this trait pairs the two types together and requires
+/// that each is a [`Message`] (can be serialized) with known type names.
+///
+/// ## Example
+///
+/// ```
+/// use ros2_client::*;
+/// use serde::{Deserialize, Serialize};
+///
+/// /// A service used to add numbers.
+/// struct AdditionService;
+///
+/// #[derive(Clone, Debug, Deserialize, Serialize)]
+/// struct AdditionRequest {
+///     pub a: i32,
+///     pub b: i32,
+/// }
+///
+/// #[derive(Clone, Debug, Deserialize, Serialize)]
+/// struct AdditionResponse {
+///     answer: i32,
+/// }
+///
+/// impl Message for AdditionRequest {}
+/// impl Message for AdditionResponse {}
+///
+/// impl Service for AdditionService {
+///     type Request = AdditionRequest;
+///
+///     type Response = AdditionResponse;
+///
+///     fn request_type_name(&self) -> &str {
+///         "AdditionRequest"
+///     }
+///
+///     fn response_type_name(&self) -> &str {
+///         "AdditionResponse"
+///     }
+/// }
+/// ```
 pub trait Service {
+    /// A message sent by the 'requester' containing information about what the
+    /// responder should compute.
     type Request: Message;
+    /// The reply sent by the 'responder' with info about the computation.
     type Response: Message;
     fn request_type_name(&self) -> &str;
     fn response_type_name(&self) -> &str;
