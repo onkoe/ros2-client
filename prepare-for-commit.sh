@@ -1,13 +1,22 @@
 #!/bin/bash
 
 # Run formatter
-echo cargo +nightly fmt
-cargo +nightly fmt
+echo Formatting...
+cargo fmt
 
 # Run linter
-echo cargo +nightly clippy
-cargo +nightly clippy
+echo Linting...
+cargo clippy
 
 # Run linter on examples
-echo cargo +nightly clippy --examples
+echo Linting examples...
 cargo +nightly clippy --examples
+
+# tests
+echo Running tests...
+cargo nextest run
+echo Running doctests...
+cargo test --doc
+
+# generate readme
+cargo rdme

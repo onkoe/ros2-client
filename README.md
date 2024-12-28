@@ -1,152 +1,155 @@
-# ROS2 Client
+<!-- cargo-rdme start -->
 
-This is a Rust native client library for [ROS2](https://docs.ros.org/en/galactic/index.html). 
-It does not link to [rcl](https://github.com/ros2/rcl), 
-[rclcpp](https://docs.ros2.org/galactic/api/rclcpp/index.html), or any non-Rust DDS library. 
-[RustDDS](https://github.com/jhelovuo/RustDDS) is used for communication.
+# `ros2_client`
 
-The API is not identical to `rclcpp` or `rclpy`, because some parts would be very awkward in Rust. For example, there are no callbacks. Rust `async` mechanism is used instead. Alternatively, some of the functionality can be polled using the Metal I/O library.
+A ROS 2 client library for Rust. It's similar to [`rclcpp`](https://docs.ros.org/en/rolling/p/rclcpp/) and [`rclpy`](https://docs.ros.org/en/rolling/p/rclpy/), but made in native Rust. It doesn't link to [`rcl`](https://github.com/ros2/rcl) or any other external DDS library. Instead, it uses [`RustDDS`](https://github.com/jhelovuo/RustDDS) for communication.
 
-There is a `.spin()` call, but it is required only to have `ros2-client` execute some background tasks. You can spawn an async task to run it, and retain the flow of control in your code.
+This library's API builds on the concepts of `rclcpp` and `rclpy`, but it's not identical to avoid some awkward constructs. For example, callbacks in `rclpy` are instead replaced with Rust's `async` interface. However, like those libraries, there is a `spin` call to have `ros2_client` execute background tasks.
 
-Please see the included examples on how to use the various features.
+## Quick Start
 
-## Features Status
+Most of this crate's types are readily available in its `prelude`. You can import it like so:
 
-* Topics, Publish and Subscribe ✅
-* QoS ✅
-* Serialization ✅ - via Serde
-* Services: Clients and Servers ✅ (async recommended)
-* Actions ✅ (async required)
-* Discovery / ROS Graph update events ✅ (async)
-* `rosout` logging ✅
-* Parameters ✅
-    * Parameter Services (remote Parameter manipulation) ✅
-* Time support
-    * ROS Time ✅
-    * Simulated time support ✅
-    * Steady time ✅
-* Message generation: from `.msg` to `.rs`- experimental
-* ROS 2 Security - experimental
+```rust
+use ros2_client::prelude::*;
+```
 
-## ROS 2 Releases Compatibility
+### Example
 
-This is what is expected to work. There are no routine tests against older releases.
+With the types in that prelude, we can now start building our Nodes and other ROS 2 types! Let's start by writing a simple chat subscriber node:
+
+```rust
+use ros2_client::prelude::{dds::*, *};
+
+// In `ros2_client`, the `Context` struct needs to be initialized before you
+// can make anything talk.
+//
+// That's because it holds the DDS layer, which handles all networking here.
+let ctx = Context::from_domain_participant(DomainParticipant::new(1).expect("dds security"))
+    .expect("there shouldn't be another context");
+
+// Let's make a node!
+let mut node = {
+    // We'll need a few things first:
+    //
+    // 1. `ctx` (done)
+    // 2. NodeName
+    // 3. NodeOptions
+
+    // I'll start with the name:
+    let node_name = NodeName::new("/rustdds", "example_node")
+        .expect("node name should follow ROS 2 naming conventions");
+
+    // Great! Now, we can focus on the options.
+    //
+    // Most of the time, we'll want to turn on `rosout`, which allows the node to
+    // print into the ROS 2 domain's `rosout` topic.
+    //
+    // Or, in other words, we can print to a shared 'console'.
+    let node_options = NodeOptions::new()
+        .enable_rosout(true) // this is on by default but shh...
+        .declare_parameter("is_cool", ParameterValue::Boolean(true));
+
+    // Finally, we can make the node:
+    ctx.new_node(node_name, node_options)
+        .expect("node creation should succeed")
+};
+
+// Alright, our node is finished. Let's make a topic for it to subscribe to!
+let topic: Topic = {
+    // Topics require the following:
+    //
+    // 1. a Node to create it (done)
+    // 2. some Name
+    // 3. A known Message type
+    // 4. a QOS configuration
+    //
+    // Let's make each of these.
+
+    // make the name
+    let topic_name: Name =
+        Name::new("/", "some_name").expect("topic name should follow conventions");
+
+    // Message types are somewhat complex in ROS 2. In ROS 2, they're typically
+    // `.msg` files, but this library uses the `Message` trait.
+    //
+    // If you need to generate Rust types for your `.msg` files, you can
+    // use the `msggen` tool in the GitHub repo.
+    //
+    // That said, we'll use a message type included with ROS 2 - 'String'!
+    let message_ty_name = MessageTypeName::new("std_msgs", "String");
+
+    // Now, we can make our QOS. These describe how the topic will treat
+    // the network, and the DDS' expectations around that.
+    //
+    // In any case, the default subscription QOS will work great for this
+    // here since we're making our Node a subscriber.
+    let qos = &DEFAULT_PUBLISHER_QOS;
+
+    // Lastly, we can make the Topic with all that stuff:
+    node.create_topic(&topic_name, message_ty_name, qos)
+        .expect("topic creation")
+};
+
+// Now that it's done, we can subscribe our node to the topic!
+let subscription: Subscription<String> = node
+    .create_subscription(&topic, None)
+    .expect("topic subscription should succeed");
+
+
+// Each time we get a message, we'll print to the terminal...
+//
+// This runs forever!
+while let Ok((text, _msg_info)) = subscription.async_take().await {
+    println!("{text}");
+}
+```
+
+**Additional examples are present in the `/examples` folder. Please take a look!**
+
+## Features
+
+- ROS 2
+  - ✅ Nodes
+  - ✅ Interfaces
+    - ✅ Messages
+        - 🚧 `.msg` => `.rs` generation experimental
+    - ✅ Topics
+        - ✅ Publishers
+        - ✅ Subscribers
+    - ✅ Services (client and server, mostly async)
+    - ✅ Actions (async)
+  - ✅ Parameters (remote Parameter manipulation)
+  - ✅ Serialization (via `serde`)
+  - ✅ `rosout` logging
+  - ✅ Time (ROS, simulated, steady)
+- DDS
+  - ✅ Discovery (ROS Graph update events, async)
+  - ✅ QoS
+
+## Compatibility (with ROS 2 Releases)
+
+This table shows what is expected to work. Note that older releases are not routinely tested, so a newer release is a better bet.
 
 | ROS 2 Release | `ros2-client` should interoperate? |
 | ------------- | :------------ |
 | A - E         | Maybe. Not tested. |
 | Foxy, Galactic, Humble | Yes. Enable feature `pre-iron-gid` when building `ros2-client` 0.7.5 or newer |
 | Iron  | Yes. Not well tested. Requires `ros2-client` 0.7.5 or newer |
-| Jazzy | Yes. Requires `ros2-client` 0.7.5 or newer | 
+| Jazzy | Yes. Requires `ros2-client` 0.7.5 or newer |
 
+## Changelog
 
-## New in Version 0.7:
-* `NodeName` namespace is no longer allowed to be the empty string, because it confuses ROS 2 tools. Minimum namespace is "/".
-* Parameter support, incl. Paramater services
-* Time support
-
-### 0.7.1
-* Subscribers can `take()` samples with deserialization "seed" value. 
-This allows more run-time control of deserialization. Upgrade to RustDDS 0.10.0.
-
-### 0.7.2
-* Adapt to separation of CDR encoding from RustDDS.
-
-### 0.7.4
-* Implement std `Error` trait for `NameError` and `NodeCreateError`
-* Async `wait_for_writer` and `wait_for_reader` results now implement `Send`.
-
-### 0.7.5
-* New feature `pre-iron-gid`. The Gid `.msg` definition has changed between ROS2 Humble and Iron. `ros2-client` now uses the newer version by default. Use this feature to revert to the old definition.
-
-## New in Version 0.6:
-
-* Reworked ROS 2 Discovery implementation. Now `Node` has `.status_receiver()`
-* Async `.spin()` call to run the Discovery mechanism.
-* `Client` has `.wait_for_service()`
-* New API for naming Nodes, Topics, Services, Actions, and data types for Topics, Actions, and Services. The new API is more structured to avoid possible confusion and errors from parsing strings.
-
-## New in version 0.5:
-
-* Actions are supported
-* async programming interface. This should make a built-in event loop unnecessary, as Rust async executors sort of do that already. This means that `ros2-client` is not going to implement a call similar to  [`rclcpp::spin(..)`](https://docs.ros.org/en/rolling/Concepts/Intermediate/About-Executors.html).
-
-## Example: minimal_action_server and minimal_action_client
-
-These are re-implementations of [similarly named ROS examples](https://docs.ros.org/en/iron/Tutorials/Intermediate/Writing-an-Action-Server-Client/Cpp.html). They should be interoperable with ROS 2 example programs in C++ or Python.
-
-To test this, start a server and then, in a separate terminal, a client, e.g.
-
-`ros2 run examples_rclcpp_minimal_action_server action_server_member_functions`
-and
-`cargo run --example=minimal_action_client`
-
-or
-
-`cargo run --example=minimal_action_server`
-and
-`ros2 run examples_rclpy_minimal_action_client client`
-
-You should see the client requesting for a sequence of Fibonacci numbers, and the server providing them until the requested sequence length is reached.
-
-## Example: turtle_teleop
-
-The included example program should be able to communicate with out-of-the-box ROS2 turtlesim example.
-
-Install ROS2 and start the simulator by ` ros2 run turtlesim turtlesim_node`. Then run the `turtle_teleop` example to control the simulator.
-
-![Turtlesim screenshot](examples/turtle_teleop/screenshot.png)
-
-Teleop example program currently has the following keyboard commands:
-
-* Cursor keys: Move turtle
-* `q` or `Ctrl-C`: quit
-* `r`: reset simulator
-* `p`: change pen color (for turtle1 only)
-* `a`/`b` : spawn turtle1 / turtle2
-* `A`/`B` : kill turtle1 / turtle2
-* `1`/`2` : switch control between turtle1 / turtle2
-* `d`/`f`/`g`: Trigger or cancel absolute rotation action.
-
-## Example: ros2_service_server
-
-Install ROS2. This has been tested to work against "Galactic" release, using either eProsima FastDDS or RTI Connext DDS (`rmw_connextdds`, not `rmw_connext_cpp`). 
-
-Start server: `cargo run --example=ros2_service_server`
-
-In another terminal or computer, run a client: `ros2 run examples_rclpy_minimal_client client`
-
-## Example: ros2_service_client
-
-Similar to above.
-
-Start server: `ros2 run examples_rclpy_minimal_service service`
-
-Run client: `cargo run --example=ros2_service_client`
+Please see [the changelog](./CHANGELOG.md) for info about crate updates.
 
 ## Related Work
 
-* [ros2_rust](https://github.com/ros2-rust/ros2_rust) is closest(?) to an official ROS2 client library. It links to ROS2 `rcl` library written in C.
-* [rclrust](https://github.com/rclrust/rclrust) is another ROS2 client library for Rust. It supports also ROS2 Services in addition to Topics. It links to ROS2 libraries, e.g. `rcl` and `rmw`.
-* [rus2](https://github.com/marshalshi/rus2) exists, but appears to be inactive since September 2020.
+- [`ros2_rust`](https://github.com/ros2-rust/ros2_rust) is closest(?) to an official ROS2 client library. It links to ROS2 `rcl` library written in C.
+- [`rclrust`](https://github.com/rclrust/rclrust) is another ROS2 client library for Rust. It supports ROS2 Services and Topics, and links to ROS2 libraries, e.g. `rcl` and `rmw`.
+- [`rus2`](https://github.com/marshalshi/rus2) exists, but appears to be inactive since September 2020.
 
 ## License
 
-Copyright 2022 Atostek Oy
+This crate is licensed under the Apache License, Version 2.0. See the [LICENSE file](./LICENSE) for additional information.
 
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-    http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
-
-## Acknowledgements
-
-This crate is developed and open-source licensed by [Atostek Oy](https://www.atostek.com/).
+<!-- cargo-rdme end -->

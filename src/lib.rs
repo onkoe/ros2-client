@@ -1,9 +1,11 @@
 //! # `ros2_client`
 //!
-//! A ROS 2 client library for Rust. It's similar to [`rclcpp`](https://docs.ros.org/en/rolling/p/rclcpp/) and [`rclpy`](https://docs.ros.org/en/rolling/p/rclpy/), but made in native Rust.
+//! A ROS 2 client library for Rust. It's similar to [`rclcpp`](https://docs.ros.org/en/rolling/p/rclcpp/) and [`rclpy`](https://docs.ros.org/en/rolling/p/rclpy/), but made in native Rust. It doesn't link to [`rcl`](https://github.com/ros2/rcl) or any other external DDS library. Instead, it uses [`RustDDS`](https://github.com/jhelovuo/RustDDS) for communication.
+//!
+//! This library's API builds on the concepts of `rclcpp` and `rclpy`, but it's not identical to avoid some awkward constructs. For example, callbacks in `rclpy` are instead replaced with Rust's `async` interface. However, like those libraries, there is a `spin` call to have `ros2_client` execute background tasks.
 //!
 //! ## Quick Start
-//!     
+//!
 //! Most of this crate's types are readily available in its `prelude`. You can import it like so:
 //!
 //! ```
@@ -105,9 +107,52 @@
 //! # }
 //! ```
 //!
-//! ## DDS
+//! **Additional examples are present in the `/examples` folder. Please take a look!**
 //!
-//! The underlying DDS implementation, [`rustdds`](https://atostek.com/en/products/rustdds/), is also made in native Rust.
+//! ## Features
+//!
+//! - ROS 2
+//!   - ✅ Nodes
+//!   - ✅ Interfaces
+//!     - ✅ Messages
+//!         - 🚧 `.msg` => `.rs` generation experimental
+//!     - ✅ Topics
+//!         - ✅ Publishers
+//!         - ✅ Subscribers
+//!     - ✅ Services (client and server, mostly async)
+//!     - ✅ Actions (async)
+//!   - ✅ Parameters (remote Parameter manipulation)
+//!   - ✅ Serialization (via `serde`)
+//!   - ✅ `rosout` logging
+//!   - ✅ Time (ROS, simulated, steady)
+//! - DDS
+//!   - ✅ Discovery (ROS Graph update events, async)
+//!   - ✅ QoS
+//!
+//! ## Compatibility (with ROS 2 Releases)
+//!
+//! This table shows what is expected to work. Note that older releases are not routinely tested, so a newer release is a better bet.
+//!
+//! | ROS 2 Release | `ros2-client` should interoperate? |
+//! | ------------- | :------------ |
+//! | A - E         | Maybe. Not tested. |
+//! | Foxy, Galactic, Humble | Yes. Enable feature `pre-iron-gid` when building `ros2-client` 0.7.5 or newer |
+//! | Iron  | Yes. Not well tested. Requires `ros2-client` 0.7.5 or newer |
+//! | Jazzy | Yes. Requires `ros2-client` 0.7.5 or newer |
+//!
+//! ## Changelog
+//!
+//! Please see [the changelog](./CHANGELOG.md) for info about crate updates.
+//!
+//! ## Related Work
+//!
+//! - [`ros2_rust`](https://github.com/ros2-rust/ros2_rust) is closest(?) to an official ROS2 client library. It links to ROS2 `rcl` library written in C.
+//! - [`rclrust`](https://github.com/rclrust/rclrust) is another ROS2 client library for Rust. It supports ROS2 Services and Topics, and links to ROS2 libraries, e.g. `rcl` and `rmw`.
+//! - [`rus2`](https://github.com/marshalshi/rus2) exists, but appears to be inactive since September 2020.
+//!
+//! ## License
+//!
+//! This crate is licensed under the Apache License, Version 2.0. See the [LICENSE file](./LICENSE) for additional information.
 
 pub mod action;
 pub mod interfaces;
