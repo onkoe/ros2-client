@@ -47,9 +47,6 @@
 //!   // --> smol::block_on( subscription_stream );
 //! ```
 
-#[macro_use]
-extern crate lazy_static;
-
 pub mod action;
 pub mod interfaces;
 pub mod log;

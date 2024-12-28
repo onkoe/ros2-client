@@ -4,7 +4,7 @@ pub mod ros_discovery {
         QosPolicies, QosPolicyBuilder,
     };
 
-    lazy_static! {
+    lazy_static::lazy_static! {
         pub static ref QOS_PUB: QosPolicies = QosPolicyBuilder::new()
             .durability(Durability::TransientLocal)
             .deadline(Deadline(rustdds::Duration::INFINITE))
@@ -37,7 +37,7 @@ pub mod parameter_events {
         QosPolicies, QosPolicyBuilder,
     };
 
-    lazy_static! {
+    lazy_static::lazy_static! {
         pub static ref QOS: QosPolicies = QosPolicyBuilder::new()
             .durability(Durability::TransientLocal)
             .reliable(rustdds::Duration::ZERO)
@@ -56,7 +56,7 @@ pub mod rosout {
         QosPolicies, QosPolicyBuilder,
     };
 
-    lazy_static! {
+    lazy_static::lazy_static! {
         pub static ref QOS: QosPolicies = QosPolicyBuilder::new()
             .durability(Durability::TransientLocal)
             .deadline(Deadline(rustdds::Duration::INFINITE))

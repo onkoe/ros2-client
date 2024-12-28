@@ -26,7 +26,7 @@ use crate::{
     topic::builtin_topics,
 };
 
-lazy_static! {
+lazy_static::lazy_static! {
 /// Basic BestEffort QoS for subscribers
 ///
 /// Note: If you want Reliable communication, both publisher and Subscriber
@@ -44,7 +44,7 @@ lazy_static! {
     .build();
 }
 
-lazy_static! {
+lazy_static::lazy_static! {
 /// Basic Reliable QoS for publishing.
   pub static ref DEFAULT_PUBLISHER_QOS: QosPolicies = QosPolicyBuilder::new()
     .durability(Durability::Volatile)
