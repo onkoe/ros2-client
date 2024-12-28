@@ -1251,6 +1251,16 @@ impl Node {
     ///   (/), i.e. ~/foo not ~foo
     /// * must have balanced curly braces ({}) when used, i.e. {sub}/foo but not
     ///   {sub/foo nor /foo}
+    /* TODO: make + use AsRef impls for less annoying usage
+        pub fn create_topic<TopicName: AsRef<Name>, MsgTyName: AsRef<MessageTypeName>>(
+        &self,
+        topic_name: TopicName,
+        type_name: MsgTyName,
+        qos: &QosPolicies,
+    ) -> CreateResult<Topic> {
+        let topic_name = topic_name.as_ref();
+        let ty_name = type_name.as_ref();
+    */
     pub fn create_topic(
         &self,
         topic_name: &Name,
@@ -1593,13 +1603,13 @@ impl Drop for Node {
 
 /// Macro for writing to [rosout](https://wiki.ros.org/rosout) topic.
 ///
-/// # Example
+/// ## Example
 ///
 /// ```
-/// # use ros2_client::*;
-/// #
+/// use ros2_client::prelude::*;
+///
 /// # let context = Context::new().unwrap();
-/// # let mut node = context
+/// # let mut some_node = context
 /// #     .new_node(
 /// #       NodeName::new("/", "some_node").unwrap(),
 /// #       NodeOptions::new().enable_rosout(true),
@@ -1607,7 +1617,7 @@ impl Drop for Node {
 /// #     .unwrap();
 /// let kind = "silly";
 ///
-/// rosout!(node, ros2::LogLevel::Info, "A {} event was seen.", kind);
+/// rosout!(some_node, LogLevel::Info, "A {} event was seen.", kind);
 /// ```
 #[macro_export]
 macro_rules! rosout {

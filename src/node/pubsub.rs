@@ -161,7 +161,7 @@ impl<M: 'static + DeserializeOwned> Subscription<M> {
         }
     }
 
-    // Returns an async Stream of messages with MessageInfo metadata
+    /// Returns an async Stream of messages with MessageInfo metadata
     pub fn async_stream(&self) -> impl FusedStream<Item = ReadResult<(M, MessageInfo)>> + '_ {
         self.datareader
             .as_async_stream()

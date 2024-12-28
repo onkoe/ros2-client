@@ -28,7 +28,7 @@ pub use server::Server;
 /// ## Example
 ///
 /// ```
-/// use ros2_client::*;
+/// use ros2_client::prelude::*;
 /// use serde::{Deserialize, Serialize};
 ///
 /// /// A service used to add numbers.
