@@ -106,12 +106,15 @@ where
         }
     }
 
-    /// Receive a response from Server
+    /// Try to get a response from Server.
+    ///
     /// Returns `Ok(None)` if no new responses have arrived.
-    /// Note: The response may to someone else's request. Check received
-    /// `RmWRequestId` against the one you got when sending request to identify
-    /// the correct response. In case you receive someone else's response,
-    /// please do receive again.
+    ///
+    /// Note: The response may be to someone else's request. You must check the
+    /// received [`RmwRequestId`] against the orginal to verify that this is
+    /// a response to the correct request.
+    ///
+    /// If you get a response for the wrong request, call this again.
     pub fn receive_response(&self) -> ReadResult<Option<(RmwRequestId, S::Response)>> {
         self.response_receiver.drain_read_notifications();
         let dcc_rw: Option<no_key::DeserializedCacheChange<ResponseWrapper<S::Response>>> =

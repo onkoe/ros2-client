@@ -1,3 +1,5 @@
+//! Types and utilities for ROS 2 Actions.
+
 use std::{
     collections::{btree_map::Entry, BTreeMap},
     marker::PhantomData,
@@ -34,12 +36,18 @@ pub mod goal;
 
 /// A trait to define an Action type
 pub trait ActionTypes {
-    type GoalType: Message + Clone; // Used by client to set a goal for the server
-    type ResultType: Message + Clone; // Used by server to report result when action ends
-    type FeedbackType: Message; // Used by server to report progress during action execution
+    /// Used by an Action Client to set a goal for the Action Server.
+    type GoalType: Message + Clone;
+    /// Used by the Server to report a result when the Action completes.
+    type ResultType: Message + Clone;
+    /// Used by the Server to report progress during Action execution.
+    type FeedbackType: Message;
 
+    /// The type name of the goal message.
     fn goal_type_name(&self) -> &str;
+    /// Result message type name.
     fn result_type_name(&self) -> &str;
+    /// Feedback message type name.
     fn feedback_type_name(&self) -> &str;
 }
 
@@ -54,12 +62,14 @@ pub struct Action<G, R, F> {
     feedback_typename: String,
 }
 
-impl<G, R, F> Action<G, R, F>
+impl<Goal, Result, Feedback> Action<Goal, Result, Feedback>
 where
-    G: Message + Clone,
-    R: Message + Clone,
-    F: Message,
+    Goal: Message + Clone,
+    Result: Message + Clone,
+    Feedback: Message,
 {
+    /// Given these type names (mentioned in [`ActionTypes`]), this constructor
+    /// creates a new [`ActionType`] implementation.
     pub fn new(goal_typename: String, result_typename: String, feedback_typename: String) -> Self {
         Self {
             goal_typename,
@@ -97,7 +107,9 @@ where
 
 //TODO: Make fields private, add constructor and accessors.
 
-/// Collection of QoS policies requires for an Action client
+/// Collection of QoS policies required for an Action client.
+#[derive(Debug, Clone)]
+#[expect(missing_docs)]
 pub struct ActionClientQosPolicies {
     pub goal_service: QosPolicies,
     pub result_service: QosPolicies,
@@ -107,6 +119,8 @@ pub struct ActionClientQosPolicies {
 }
 
 /// Collection of QoS policies requires for an Action server
+#[derive(Debug, Clone)]
+#[expect(missing_docs)]
 pub struct ActionServerQosPolicies {
     pub goal_service: QosPolicies,
     pub result_service: QosPolicies,
@@ -115,44 +129,57 @@ pub struct ActionServerQosPolicies {
     pub status_publisher: QosPolicies,
 }
 
-/// Emulating ROS2 IDL code generator: Goal sending/setting service
-
+/// A request message for the goal sending service.
+///
+/// (emulating ROS2 IDL code generator: Goal sending/setting service)
 #[derive(Clone, Serialize, Deserialize, Debug)]
-pub struct SendGoalRequest<G> {
+pub struct SendGoalRequest<Goal> {
+    /// A goal's unique ID.
     pub goal_id: GoalId,
-    pub goal: G,
+    /// A goal.
+    pub goal: Goal,
 }
 impl<G: Message> Message for SendGoalRequest<G> {}
 
+/// A response message for the goal sending service.
 #[derive(Clone, Serialize, Deserialize, Debug)]
 pub struct SendGoalResponse {
+    /// If the goal was accepted, this is `true`.
     pub accepted: bool,
+    /// Timestamp.
     pub stamp: Time,
 }
 impl Message for SendGoalResponse {}
 
-/// Emulating ROS2 IDL code generator: Result getting service
+/// A request message for the result getting service.
 #[derive(Clone, Serialize, Deserialize, Debug)]
 pub struct GetResultRequest {
+    /// The goal's unique ID.
     pub goal_id: GoalId,
 }
 impl Message for GetResultRequest {}
 
+/// A response message for the result getting service.
 #[derive(Clone, Serialize, Deserialize, Debug)]
-pub struct GetResultResponse<R> {
+pub struct GetResultResponse<Res> {
+    /// Information about the goal's status.
     pub status: GoalStatusEnum, // interpretation same as in GoalStatus message?
-    pub result: R,
+    /// The result message.
+    pub result: Res,
 }
 impl<R: Message> Message for GetResultResponse<R> {}
 
-/// Emulating ROS2 IDL code generator: Feedback Topic message type
+/// A message type for the feedback topic.
 #[derive(Clone, Serialize, Deserialize, Debug)]
-pub struct FeedbackMessage<F> {
+pub struct FeedbackMessage<Feedback> {
+    /// The goal's unique ID.
     pub goal_id: GoalId,
-    pub feedback: F,
+    /// The actual feedback message.
+    pub feedback: Feedback,
 }
 impl<F: Message> Message for FeedbackMessage<F> {}
 
+/// An Action Client.
 pub struct ActionClient<A>
 where
     A: ActionTypes,
@@ -182,35 +209,48 @@ where
     A::ResultType: Message + Clone,
     A::FeedbackType: Message,
 {
+    /// Returns the Action name.
     pub fn name(&self) -> &Name {
         &self.my_action_name
     }
 
+    /// Returns a mutable reference to the goal Client.
     pub fn goal_client(
         &mut self,
     ) -> &mut Client<AService<SendGoalRequest<A::GoalType>, SendGoalResponse>> {
         &mut self.my_goal_client
     }
+
+    /// Returns a mutable reference to the cancel Client.
     pub fn cancel_client(
         &mut self,
     ) -> &mut Client<AService<goal::CancelGoalRequest, goal::CancelGoalResponse>> {
         &mut self.my_cancel_client
     }
+
+    /// Returns a mutable reference to the result Client.
     pub fn result_client(
         &mut self,
     ) -> &mut Client<AService<GetResultRequest, GetResultResponse<A::ResultType>>> {
         &mut self.my_result_client
     }
+
+    /// Returns a mutable reference to the feedback Subscription.
     pub fn feedback_subscription(&mut self) -> &mut Subscription<FeedbackMessage<A::FeedbackType>> {
         &mut self.my_feedback_subscription
     }
+
+    /// Returns a mutable reference to the status Subscription.
     pub fn status_subscription(&mut self) -> &mut Subscription<goal::GoalStatusArray> {
         &mut self.my_status_subscription
     }
 
-    /// Returns and id of the Request and id for the Goal.
-    /// Request id can be used to recognize correct response from Action Server.
-    /// Goal id is later used to communicate Goal status and result.
+    /// Returns the IDs for both the Request and the Goal.
+    ///
+    /// The Request ID can be used to recognize the correct response from the
+    /// Action Server.
+    ///
+    /// The Goal ID is later used to communicate Goal status and result.
     pub fn send_goal(&self, goal: A::GoalType) -> WriteResult<(RmwRequestId, GoalId), ()>
     where
         <A as ActionTypes>::GoalType: 'static,
@@ -221,8 +261,9 @@ where
             .map(|req_id| (req_id, goal_id))
     }
 
-    /// Receive a response for the specified goal request, or None if response is
-    /// not yet available
+    /// Attempts to receive a response for the specified goal request.
+    ///
+    /// This will be `None` if the response is not yet available.
     pub fn receive_goal_response(
         &self,
         req_id: RmwRequestId,
@@ -255,6 +296,7 @@ where
         // been received already.
     }
 
+    /// Sends a goal to the Action Server.
     pub async fn async_send_goal(
         &self,
         goal: A::GoalType,
@@ -269,18 +311,17 @@ where
         Ok((goal_id, send_goal_response))
     }
 
-    // From ROS2 docs:
-    // https://docs.ros2.org/foxy/api/action_msgs/srv/CancelGoal.html
-    //
-    // Cancel one or more goals with the following policy:
-    // - If the goal ID is zero and timestamp is zero, cancel all goals.
-    // - If the goal ID is zero and timestamp is not zero, cancel all goals accepted
-    //   at or before the timestamp.
-    // - If the goal ID is not zero and timestamp is zero, cancel the goal with the
-    //   given ID regardless of the time it was accepted.
-    // - If the goal ID is not zero and timestamp is not zero, cancel the goal with
-    //   the given ID and all goals accepted at or before the timestamp.
-
+    /// From ROS2 docs:
+    /// https://docs.ros2.org/foxy/api/action_msgs/srv/CancelGoal.html
+    ///
+    /// Cancel one or more goals with the following policy:
+    /// - If the goal ID is zero and timestamp is zero, cancel all goals.
+    /// - If the goal ID is zero and timestamp is not zero, cancel all goals accepted
+    ///   at or before the timestamp.
+    /// - If the goal ID is not zero and timestamp is zero, cancel the goal with the
+    ///   given ID regardless of the time it was accepted.
+    /// - If the goal ID is not zero and timestamp is not zero, cancel the goal with
+    ///   the given ID and all goals accepted at or before the timestamp.
     fn cancel_goal_raw(&self, goal_id: GoalId, timestamp: Time) -> WriteResult<RmwRequestId, ()> {
         let goal_info = GoalInfo {
             goal_id,
@@ -290,34 +331,43 @@ where
             .send_request(CancelGoalRequest { goal_info })
     }
 
+    /// Cancels a goal with the given ID.
     pub fn cancel_goal(&self, goal_id: GoalId) -> WriteResult<RmwRequestId, ()> {
         self.cancel_goal_raw(goal_id, Time::ZERO)
     }
 
+    /// Cancels all goals accepted before the given timestamp.
     pub fn cancel_all_goals_before(&self, timestamp: Time) -> WriteResult<RmwRequestId, ()> {
         self.cancel_goal_raw(GoalId::ZERO, timestamp)
     }
 
+    /// Cancels all goals.
     pub fn cancel_all_goals(&self) -> WriteResult<RmwRequestId, ()> {
         self.cancel_goal_raw(GoalId::ZERO, Time::ZERO)
     }
 
+    /// Attempts to receive a response for the specified cancel request.
     pub fn receive_cancel_response(
         &self,
         cancel_request_id: RmwRequestId,
     ) -> ReadResult<Option<CancelGoalResponse>> {
         loop {
-            match self.my_cancel_client.receive_response() {
-                Err(e) => break Err(e),
-                Ok(None) => break Ok(None), // not yet
-                Ok(Some((incoming_req_id, resp))) if incoming_req_id == cancel_request_id => {
+            match self.my_cancel_client.receive_response()? {
+                // no reponse yet!
+                None => break Ok(None),
+
+                // we got the expected answer!
+                Some((incoming_req_id, resp)) if incoming_req_id == cancel_request_id => {
                     break Ok(Some(resp))
-                } // received expected answer
-                Ok(Some(_)) => continue,    // got someone else's answer. Try again.
+                }
+
+                // got someone else's answer. try again.
+                Some(_) => continue,
             }
         }
     }
 
+    /// Cancels a goal with the given ID and timestamp.
     pub fn async_cancel_goal(
         &self,
         goal_id: GoalId,
@@ -331,6 +381,7 @@ where
             .async_call_service(CancelGoalRequest { goal_info })
     }
 
+    /// Requests the Result for the goal with the given ID.
     pub fn request_result(&self, goal_id: GoalId) -> WriteResult<RmwRequestId, ()>
     where
         <A as ActionTypes>::ResultType: 'static,
@@ -339,6 +390,7 @@ where
             .send_request(GetResultRequest { goal_id })
     }
 
+    /// Attempts to receive the result for the specified request.
     pub fn receive_result(
         &self,
         result_request_id: RmwRequestId,
@@ -347,23 +399,28 @@ where
         <A as ActionTypes>::ResultType: 'static,
     {
         loop {
-            match self.my_result_client.receive_response() {
-                Err(e) => break Err(e),
-                Ok(None) => break Ok(None), // not yet
-                Ok(Some((incoming_req_id, GetResultResponse { status, result })))
+            match self.my_result_client.receive_response()? {
+                // not yet
+                None => break Ok(None),
+
+                // we got the expected answer!
+                Some((incoming_req_id, GetResultResponse { status, result }))
                     if incoming_req_id == result_request_id =>
                 {
                     break Ok(Some((status, result)))
-                } // received expected answer
-                Ok(Some(_)) => continue,    // got someone else's answer. Try again.
+                }
+
+                // got someone else's answer. try again.
+                Some(_) => continue,
             }
         }
     }
 
-    /// Asynchronously request goal result.
-    /// Result should be requested as soon as a goal is accepted.
-    /// Result ia actually received only when Server informs that the goal has
-    /// either Succeeded, or has been Canceled or Aborted.
+    /// Asynchronously request goal Result.
+    ///
+    /// Result should be requested as soon as a goal is accepted, but will only
+    /// be received when the Server informs that the goal has either Succeeded,
+    /// or has been Canceled/Aborted.
     pub async fn async_request_result(
         &self,
         goal_id: GoalId,
@@ -378,23 +435,24 @@ where
         Ok((status, result))
     }
 
+    /// Attempts to receive a Feedback message for the goal with the given ID.
     pub fn receive_feedback(&self, goal_id: GoalId) -> ReadResult<Option<A::FeedbackType>>
     where
         <A as ActionTypes>::FeedbackType: 'static,
     {
         loop {
-            match self.my_feedback_subscription.take() {
-                Err(e) => break Err(e),
-                Ok(None) => break Ok(None),
-                Ok(Some((fb_msg, _msg_info))) if fb_msg.goal_id == goal_id => {
+            match self.my_feedback_subscription.take()? {
+                None => break Ok(None),
+
+                Some((fb_msg, _msg_info)) if fb_msg.goal_id == goal_id => {
                     break Ok(Some(fb_msg.feedback))
                 }
-                Ok(Some((fb_msg, _msg_info))) => {
+
+                Some((fb_msg, _msg_info)) => {
                     // feedback on some other goal
                     log::debug!(
-                        "Feedback on another goal {:?} != {:?}",
-                        fb_msg.goal_id,
-                        goal_id
+                        "Feedback on another goal {:?} != {goal_id:?}",
+                        fb_msg.goal_id
                     )
                 }
             }
@@ -427,17 +485,35 @@ where
             })
     }
 
-    /// Note: This does not take GoalId and will therefore report status of all
-    /// Goals.
+    /// Attempts to receive the status of all Goals.
+    ///
+    /// Note that this doesn't take a Goal ID. Thus, it reports all Goal
+    /// statuses.
+    //
+    // FIXME: the `Option` in ret is unclear and should be `Result`.
+    #[tracing::instrument(skip(self))]
     pub fn receive_status(&self) -> ReadResult<Option<goal::GoalStatusArray>> {
         self.my_status_subscription
             .take()
-            .map(|r| r.map(|(gsa, _msg_info)| gsa))
+            .inspect_err(|e| {
+                tracing::error!("Action status subscription failed to deser. message. (see: {e})");
+            })
+            .map(|res| res.map(|(status_array, _)| status_array))
     }
 
+    /// Attempts to receive the status of all Goals, asynchronously.
     pub async fn async_receive_status(&self) -> ReadResult<goal::GoalStatusArray> {
-        let (m, _msg_info) = self.my_status_subscription.async_take().await?;
-        Ok(m)
+        let (status_array, _) =
+            self.my_status_subscription
+                .async_take()
+                .await
+                .inspect_err(|e| {
+                    tracing::error!(
+                        "Action status subscription failed to deser. message. (see: {e})"
+                    );
+                })?;
+
+        Ok(status_array)
     }
 
     /// Async Stream of status updates
@@ -450,6 +526,9 @@ where
             .map(|result| result.map(|(gsa, _mi)| gsa))
     }
 
+    /// Returns the status stream for the specfied goal.
+    ///
+    /// Stream types come from the [`futures`] crate.
     pub fn status_stream(
         &self,
         goal_id: GoalId,
@@ -490,6 +569,7 @@ where
 // rt/turtle1/rotate_absolute/_action/status :
 // action_msgs::msg::dds_::GoalStatusArray_
 
+/// An Action Server.
 pub struct ActionServer<A>
 where
     A: ActionTypes,
@@ -519,28 +599,38 @@ where
     A::ResultType: Message + Clone,
     A::FeedbackType: Message,
 {
+    /// Returns the Action name.
     pub fn name(&self) -> &Name {
         &self.my_action_name
     }
 
+    /// Returns a mutable reference to the goal Server.
     pub fn goal_server(
         &mut self,
     ) -> &mut Server<AService<SendGoalRequest<A::GoalType>, SendGoalResponse>> {
         &mut self.my_goal_server
     }
+
+    /// Returns a mutable reference to the cancel Server.
     pub fn cancel_server(
         &mut self,
     ) -> &mut Server<AService<goal::CancelGoalRequest, goal::CancelGoalResponse>> {
         &mut self.my_cancel_server
     }
+
+    /// Returns a mutable reference to the result Server.
     pub fn result_server(
         &mut self,
     ) -> &mut Server<AService<GetResultRequest, GetResultResponse<A::ResultType>>> {
         &mut self.my_result_server
     }
+
+    /// Returns a mutable reference to the Feedback Publisher.
     pub fn feedback_publisher(&mut self) -> &mut Publisher<FeedbackMessage<A::FeedbackType>> {
         &mut self.my_feedback_publisher
     }
+
+    /// Returns a mutable reference to the Status Publisher.
     pub fn my_status_publisher(&mut self) -> &mut Publisher<goal::GoalStatusArray> {
         &mut self.my_status_publisher
     }
@@ -572,7 +662,7 @@ where
         self.my_cancel_server.receive_request()
     }
 
-    // Respond to a received cancel request
+    /// Responds to a received cancel request by sending a cancel response.
     pub fn send_cancel_response(
         &self,
         req_id: RmwRequestId,
@@ -581,6 +671,7 @@ where
         self.my_cancel_server.send_response(req_id, resp)
     }
 
+    /// Receive a result request, if available.
     pub fn receive_result_request(&self) -> ReadResult<Option<(RmwRequestId, GetResultRequest)>>
     where
         <A as ActionTypes>::ResultType: 'static,
@@ -588,6 +679,7 @@ where
         self.my_result_server.receive_request()
     }
 
+    /// Send a result message to the Client.
     pub fn send_result(
         &self,
         result_request_id: RmwRequestId,
@@ -599,6 +691,7 @@ where
         self.my_result_server.send_response(result_request_id, resp)
     }
 
+    /// Send a feedback message to the Client.
     pub fn send_feedback(
         &self,
         goal_id: GoalId,
@@ -608,7 +701,7 @@ where
             .publish(FeedbackMessage { goal_id, feedback })
     }
 
-    // Send the status of all known goals.
+    /// Sends the status of all known goals.
     pub fn send_goal_statuses(
         &self,
         goal_statuses: goal::GoalStatusArray,
@@ -682,25 +775,54 @@ impl CancelHandle {
     pub fn goals(&self) -> impl Iterator<Item = GoalId> + '_ {
         self.goals.iter().cloned()
     }
+
+    /// Whether this cancel request will cancel the goal with the given ID.
     pub fn contains_goal(&self, goal_id: &GoalId) -> bool {
         self.goals.contains(goal_id)
     }
 }
 
+/// The result of a goal ending.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum GoalEndStatus {
+    /// The goal succeeded.
     Succeeded,
+    /// The server aborted the goal before it could complete.
     Aborted,
+    /// The goal was canceled gracefully before completion.
     Canceled,
 }
 
-#[derive(Debug)]
+/// An error encountered while interacting with an Action.
 pub enum GoalError<T> {
+    /// The goal ID specified does not exist.
     NoSuchGoal,
+    /// The goal was in an unexpected state.
     WrongGoalState,
+    /// DDS had an error during a read operation.
     DDSReadError(ReadError),
+    /// DDS had an error during a write operation.
     DDSWriteError(WriteError<T>),
 }
+
+impl<T> core::fmt::Display for GoalError<T> {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        match self {
+            Self::NoSuchGoal => write!(f, "No such goal"),
+            Self::WrongGoalState => write!(f, "Wrong goal state"),
+            Self::DDSReadError(e) => write!(f, "DDS read error: {e}"),
+            Self::DDSWriteError(e) => write!(f, "DDS write error: {e}"),
+        }
+    }
+}
+
+impl<T> core::fmt::Debug for GoalError<T> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        core::fmt::Display::fmt(self, f) // we'll use this one as the 'canonical' fmter
+    }
+}
+
+impl<T> core::error::Error for GoalError<T> {}
 
 impl<T> From<ReadError> for GoalError<T> {
     fn from(e: ReadError) -> Self {
@@ -713,7 +835,7 @@ impl<T> From<WriteError<T>> for GoalError<T> {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Clone, Debug)]
 struct AsyncGoal<A>
 where
     A: ActionTypes,
@@ -723,6 +845,7 @@ where
     goal: A::GoalType,
 }
 
+/// An asynchronous Action Server.
 pub struct AsyncActionServer<A>
 where
     A: ActionTypes,
@@ -742,6 +865,7 @@ where
     A::ResultType: Message + Clone,
     A::FeedbackType: Message,
 {
+    /// Creates a new [`Self`] from a sync [`ActionServer`].
     pub fn new(actionserver: ActionServer<A>) -> Self {
         AsyncActionServer::<A> {
             actionserver,
@@ -750,6 +874,7 @@ where
         }
     }
 
+    /// Returns the goal, if it exists.
     pub fn get_new_goal(&self, handle: NewGoalHandle<A::GoalType>) -> Option<&A::GoalType> {
         self.goals.get(&handle.inner.goal_id).map(|ag| &ag.goal)
     }
@@ -1061,6 +1186,8 @@ where
     ) -> Result<(), GoalError<()>> {
         self.abort_goal(handle.inner).await
     }
+
+    /// Aborts an accepted goal.
     pub async fn abort_accepted_goal(
         &mut self,
         handle: AcceptedGoalHandle<A::GoalType>,

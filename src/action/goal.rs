@@ -1,6 +1,6 @@
 //! Contains types related to goal management (in Actions).
 //!
-//! For additional information, please see the [`action`] documentation.
+//! For additional information, please see the [`crate::action`] documentation.
 
 use serde::{Deserialize, Serialize};
 use serde_repr::{Deserialize_repr, Serialize_repr};
