@@ -617,52 +617,68 @@ where
     }
 } // impl
 
-#[derive(Clone, Copy)]
-pub struct NewGoalHandle<G> {
-    inner: InnerGoalHandle<G>,
+/// One of many handles to a goal.  
+pub trait GoalHandle {
+    /// Returns the goal ID.
+    fn goal_id(&self) -> GoalId;
+}
+
+/// A handle to a new goal.
+#[derive(Clone, Copy, Debug, PartialEq, PartialOrd)]
+pub struct NewGoalHandle<Goal> {
+    inner: InnerGoalHandle<Goal>,
     req_id: RmwRequestId,
 }
 
-impl<G> NewGoalHandle<G> {
-    pub fn goal_id(&self) -> GoalId {
+impl<Goal> GoalHandle for NewGoalHandle<Goal> {
+    fn goal_id(&self) -> GoalId {
         self.inner.goal_id
     }
 }
 
+/// A handle to an accepted goal.
 #[derive(Clone, Copy)]
-pub struct AcceptedGoalHandle<G> {
-    inner: InnerGoalHandle<G>,
+pub struct AcceptedGoalHandle<Goal> {
+    inner: InnerGoalHandle<Goal>,
 }
 
-impl<G> AcceptedGoalHandle<G> {
-    pub fn goal_id(&self) -> GoalId {
+impl<Goal> GoalHandle for AcceptedGoalHandle<Goal> {
+    fn goal_id(&self) -> GoalId {
         self.inner.goal_id
     }
 }
 
+/// A handle to an executing goal.
 #[derive(Clone, Copy)]
-pub struct ExecutingGoalHandle<G> {
-    inner: InnerGoalHandle<G>,
+pub struct ExecutingGoalHandle<Goal> {
+    inner: InnerGoalHandle<Goal>,
 }
 
-impl<G> ExecutingGoalHandle<G> {
-    pub fn goal_id(&self) -> GoalId {
+impl<Goal> GoalHandle for ExecutingGoalHandle<Goal> {
+    fn goal_id(&self) -> GoalId {
         self.inner.goal_id
     }
 }
 
-#[derive(Clone, Copy)]
-struct InnerGoalHandle<G> {
+/// An internal handle to a goal.
+///
+/// This only contains a goal ID alongside a representation of the goal type.
+#[derive(Clone, Copy, Debug, PartialEq, PartialOrd)]
+struct InnerGoalHandle<Goal> {
     goal_id: GoalId,
-    phantom: PhantomData<G>,
+    phantom: PhantomData<Goal>,
 }
 
+/// A handle to a cancel request.
 pub struct CancelHandle {
+    /// The request ID.
     req_id: RmwRequestId,
+    /// The goals to cancel.
     goals: Vec<GoalId>,
 }
 
 impl CancelHandle {
+    /// An iterator representing the goals to cancel.
     pub fn goals(&self) -> impl Iterator<Item = GoalId> + '_ {
         self.goals.iter().cloned()
     }

@@ -165,7 +165,7 @@ pub mod topic;
 
 /// Common types in this crate.
 pub mod prelude {
-    pub use crate::action::{Action, ActionTypes};
+    pub use crate::action::{Action, ActionTypes, GoalHandle as _};
     pub use crate::message::{message_info::MessageInfo, Message};
     pub use crate::topic::Topic;
 
