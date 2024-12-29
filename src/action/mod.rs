@@ -1,4 +1,12 @@
-//! Types and utilities for ROS 2 Actions.
+//! Types and utilities for Actions, which are long-term activities with an
+//! eventual goal.
+//!
+//! In ROS 2, these are often used for tasks that need real-world action, or
+//! otherwise take a long time to compute. This is because they provide info
+//! about their progression in 'feedback' messages!
+//!
+//! For additional information about Actions, see
+//! [the ROS 2 documentation](https://docs.ros.org/en/rolling/Concepts/Basic/About-Actions.html)!
 
 use std::{
     collections::{btree_map::Entry, BTreeMap},
