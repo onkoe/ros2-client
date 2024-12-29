@@ -15,6 +15,7 @@ use rustdds::{
 use serde::{Deserialize, Serialize};
 
 use crate::{
+    action::goal::{CancelGoalRequest, CancelGoalResponse, GoalId, GoalInfo, GoalStatusEnum},
     interfaces::{
         builtin_interfaces::{self, Time},
         unique_identifier_msgs::UUID,
@@ -28,9 +29,8 @@ use crate::{
         AService,
     },
 };
-pub use action_msgs::{CancelGoalRequest, CancelGoalResponse, GoalId, GoalInfo, GoalStatusEnum};
 
-pub mod action_msgs;
+pub mod goal;
 
 /// A trait to define an Action type
 pub trait ActionTypes {
@@ -163,14 +163,14 @@ where
     pub(crate) my_goal_client: Client<AService<SendGoalRequest<A::GoalType>, SendGoalResponse>>,
 
     pub(crate) my_cancel_client:
-        Client<AService<action_msgs::CancelGoalRequest, action_msgs::CancelGoalResponse>>,
+        Client<AService<goal::CancelGoalRequest, goal::CancelGoalResponse>>,
 
     pub(crate) my_result_client:
         Client<AService<GetResultRequest, GetResultResponse<A::ResultType>>>,
 
     pub(crate) my_feedback_subscription: Subscription<FeedbackMessage<A::FeedbackType>>,
 
-    pub(crate) my_status_subscription: Subscription<action_msgs::GoalStatusArray>,
+    pub(crate) my_status_subscription: Subscription<goal::GoalStatusArray>,
 
     pub(crate) my_action_name: Name,
 }
@@ -193,8 +193,7 @@ where
     }
     pub fn cancel_client(
         &mut self,
-    ) -> &mut Client<AService<action_msgs::CancelGoalRequest, action_msgs::CancelGoalResponse>>
-    {
+    ) -> &mut Client<AService<goal::CancelGoalRequest, goal::CancelGoalResponse>> {
         &mut self.my_cancel_client
     }
     pub fn result_client(
@@ -205,7 +204,7 @@ where
     pub fn feedback_subscription(&mut self) -> &mut Subscription<FeedbackMessage<A::FeedbackType>> {
         &mut self.my_feedback_subscription
     }
-    pub fn status_subscription(&mut self) -> &mut Subscription<action_msgs::GoalStatusArray> {
+    pub fn status_subscription(&mut self) -> &mut Subscription<goal::GoalStatusArray> {
         &mut self.my_status_subscription
     }
 
@@ -430,13 +429,13 @@ where
 
     /// Note: This does not take GoalId and will therefore report status of all
     /// Goals.
-    pub fn receive_status(&self) -> ReadResult<Option<action_msgs::GoalStatusArray>> {
+    pub fn receive_status(&self) -> ReadResult<Option<goal::GoalStatusArray>> {
         self.my_status_subscription
             .take()
             .map(|r| r.map(|(gsa, _msg_info)| gsa))
     }
 
-    pub async fn async_receive_status(&self) -> ReadResult<action_msgs::GoalStatusArray> {
+    pub async fn async_receive_status(&self) -> ReadResult<goal::GoalStatusArray> {
         let (m, _msg_info) = self.my_status_subscription.async_take().await?;
         Ok(m)
     }
@@ -445,7 +444,7 @@ where
     /// Action server send updates containing status of all goals, hence an array.
     pub fn all_statuses_stream(
         &self,
-    ) -> impl FusedStream<Item = ReadResult<action_msgs::GoalStatusArray>> + '_ {
+    ) -> impl FusedStream<Item = ReadResult<goal::GoalStatusArray>> + '_ {
         self.my_status_subscription
             .async_stream()
             .map(|result| result.map(|(gsa, _mi)| gsa))
@@ -454,7 +453,7 @@ where
     pub fn status_stream(
         &self,
         goal_id: GoalId,
-    ) -> impl FusedStream<Item = ReadResult<action_msgs::GoalStatus>> + '_ {
+    ) -> impl FusedStream<Item = ReadResult<goal::GoalStatus>> + '_ {
         self.all_statuses_stream()
             .filter_map(move |result| async move {
                 match result {
@@ -501,14 +500,14 @@ where
     pub(crate) my_goal_server: Server<AService<SendGoalRequest<A::GoalType>, SendGoalResponse>>,
 
     pub(crate) my_cancel_server:
-        Server<AService<action_msgs::CancelGoalRequest, action_msgs::CancelGoalResponse>>,
+        Server<AService<goal::CancelGoalRequest, goal::CancelGoalResponse>>,
 
     pub(crate) my_result_server:
         Server<AService<GetResultRequest, GetResultResponse<A::ResultType>>>,
 
     pub(crate) my_feedback_publisher: Publisher<FeedbackMessage<A::FeedbackType>>,
 
-    pub(crate) my_status_publisher: Publisher<action_msgs::GoalStatusArray>,
+    pub(crate) my_status_publisher: Publisher<goal::GoalStatusArray>,
 
     pub(crate) my_action_name: Name,
 }
@@ -531,8 +530,7 @@ where
     }
     pub fn cancel_server(
         &mut self,
-    ) -> &mut Server<AService<action_msgs::CancelGoalRequest, action_msgs::CancelGoalResponse>>
-    {
+    ) -> &mut Server<AService<goal::CancelGoalRequest, goal::CancelGoalResponse>> {
         &mut self.my_cancel_server
     }
     pub fn result_server(
@@ -543,7 +541,7 @@ where
     pub fn feedback_publisher(&mut self) -> &mut Publisher<FeedbackMessage<A::FeedbackType>> {
         &mut self.my_feedback_publisher
     }
-    pub fn my_status_publisher(&mut self) -> &mut Publisher<action_msgs::GoalStatusArray> {
+    pub fn my_status_publisher(&mut self) -> &mut Publisher<goal::GoalStatusArray> {
         &mut self.my_status_publisher
     }
 
@@ -570,7 +568,7 @@ where
     /// Receive a cancel request, if available.
     pub fn receive_cancel_request(
         &self,
-    ) -> ReadResult<Option<(RmwRequestId, action_msgs::CancelGoalRequest)>> {
+    ) -> ReadResult<Option<(RmwRequestId, goal::CancelGoalRequest)>> {
         self.my_cancel_server.receive_request()
     }
 
@@ -578,7 +576,7 @@ where
     pub fn send_cancel_response(
         &self,
         req_id: RmwRequestId,
-        resp: action_msgs::CancelGoalResponse,
+        resp: goal::CancelGoalResponse,
     ) -> WriteResult<(), ()> {
         self.my_cancel_server.send_response(req_id, resp)
     }
@@ -613,8 +611,8 @@ where
     // Send the status of all known goals.
     pub fn send_goal_statuses(
         &self,
-        goal_statuses: action_msgs::GoalStatusArray,
-    ) -> WriteResult<(), action_msgs::GoalStatusArray> {
+        goal_statuses: goal::GoalStatusArray,
+    ) -> WriteResult<(), goal::GoalStatusArray> {
         self.my_status_publisher.publish(goal_statuses)
     }
 } // impl
@@ -1170,11 +1168,11 @@ where
         }
         self.publish_statuses().await;
 
-        let response = action_msgs::CancelGoalResponse {
+        let response = goal::CancelGoalResponse {
             return_code: if canceling_goals.is_empty() {
-                action_msgs::CancelGoalResponseEnum::Rejected
+                goal::CancelGoalResponseEnum::Rejected
             } else {
-                action_msgs::CancelGoalResponseEnum::None // i.e. no error
+                goal::CancelGoalResponseEnum::None // i.e. no error
             },
             goals_canceling: canceling_goals,
         };
@@ -1188,7 +1186,7 @@ where
     // This function is private, because all status publishing happens automatically
     // via goal status changes.
     async fn publish_statuses(&self) {
-        let goal_status_array = action_msgs::GoalStatusArray {
+        let goal_status_array = goal::GoalStatusArray {
             status_list: self
                 .goals
                 .iter()
@@ -1200,7 +1198,7 @@ where
                             accepted_time,
                             ..
                         },
-                    )| action_msgs::GoalStatus {
+                    )| goal::GoalStatus {
                         status: *status,
                         goal_info: GoalInfo {
                             goal_id: *goal_id,

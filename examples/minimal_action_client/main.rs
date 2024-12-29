@@ -4,7 +4,7 @@ use futures::{pin_mut, FutureExt as StdFutureExt, StreamExt};
 
 use log::debug;
 use ros2_client::{
-    action::{action_msgs, ActionClientQosPolicies},
+    action::{goal, ActionClientQosPolicies},
     prelude::{dds::*, *},
 };
 use smol::future::FutureExt;
@@ -167,7 +167,7 @@ fn main() {
                             match status {
                               Ok(status) =>
                                 match status.status_list.iter().find(|gs| gs.goal_info.goal_id == goal_id) {
-                                  Some(action_msgs::GoalStatus{goal_info:_, status}) => println!("{:?}",status),
+                                  Some(goal::GoalStatus{goal_info:_, status}) => println!("{:?}",status),
                                   None => println!("Our status is missing: {:?}", status.status_list),
                                 },
                               Err(e) => println!("{:?}",e),
